@@ -3523,3 +3523,28 @@ The ShufaClaw crypto agent system is now feature-complete across all master prom
 - Documented Core Philosophy, System Architecture, Intelligence Hub logic, and Command Reference.
 - Included summaries for 40 levels of features, including Airdrop Intelligence and Master Orchestrator.
 - Designed to be "Plain English" friendly for non-coders and structured for LLM understanding.
+
+## [2026-03-05] System Hardening & Reliability Capstone (The Gaps Closed)
+
+### 1. Data & Indicators (Harden Failure Modes)
+- **Circuit Breakers & Rate Limiters**: Created `crypto_agent/core/network.py` to prevent cascade failures. Every API (Binance, CoinGecko, Etherscan) now has a failure threshold and recovery timeout.
+- **Stale Data Fallback**: Refactored `prices.py` to automatically serve stale (60m) database cache if external APIs are down or rate-limited.
+
+### 2. Memory & Journaling (Canonical Context API)
+- **Modular Context Builder**: Refactored `context_builder.py` into a modular API. Features can now request specific context fragments (Portfolio, Market, Beliefs) instead of the entire 4KB blob.
+- **`get_feature_context`**: Created a canonical entry point for all AI agents to pull their required data.
+
+### 3. AI Interaction (Unified Prompts & Safety)
+- **Unified Prompt Registry**: Created `crypto_agent/core/prompts.py` to centralize all system instructions and safety guardrails (No private keys, FOMO detection, uncertainty labeling).
+- **Agent Refactor**: Updated `agent.py` and `ExecutionGuardAgent` to use the unified prompt and modular context system.
+
+### 4. Automation & Workflows (Operational Story)
+- **Operational Documentation**: Created `OPERATIONAL_STORY.md` detailing the long-running reliability strategy (Resilience, Failure Modes, Resource Management).
+
+### 5. Risk & Execution Guard (Hard Permission Layer)
+- **Execution Pipeline**: Created `crypto_agent/core/execution_pipeline.py` to act as the final gatekeeper for any real execution. Includes `PENDING -> WAITING -> APPROVED` state machine.
+- **Guard Update**: Enhanced `ExecutionGuardAgent` with better bias detection and strict rule enforcement.
+
+### 6. UX (Telegram)
+- **Handler Registration Audit**: Verified all commands and handlers are registered in `main.py`.
+- **Error Gracefulness**: Standardized error responses across all handlers via `error_handler.py`.

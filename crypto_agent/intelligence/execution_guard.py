@@ -1,10 +1,13 @@
 import logging
 import json
+import re
 from datetime import datetime
 from crypto_agent.storage import database
 from crypto_agent.intelligence.research_snapshot import get_research_snapshot
 from crypto_agent.intelligence.behavior_analyzer import BehaviorAnalyzer
 from crypto_agent.intelligence.analyst import get_ai_response
+from crypto_agent.core import context_builder
+from crypto_agent.core import prompts
 
 logger = logging.getLogger(__name__)
 
@@ -21,53 +24,50 @@ class ExecutionGuardAgent:
         """
         symbol = symbol.upper()
         
-        # 1. Fetch data context
+        # 1. Fetch tailored feature context (CANONICAL API)
+        feature_context = await context_builder.get_feature_context('execution_guard', symbol)
+        
+        # 2. Fetch data snapshot
         snapshot = await get_research_snapshot(symbol)
-        if not snapshot:
-            return "❌ Could not gather enough data to evaluate this trade."
+        snapshot_summary = "Research snapshot unavailable."
+        if snapshot:
+            snapshot_summary = (
+                f"Price: ${snapshot['market_data']['price']}\n"
+                f"1D RSI: {snapshot['technical'].get('1d', {}).get('rsi', 'N/A') if snapshot['technical'].get('1d') else 'N/A'}\n"
+                f"24h Change: {snapshot['market_data']['change_24h']}%\n"
+                f"7d Change: {snapshot['market_data']['change_7d']}%"
+            )
 
-        # 2. Fetch User Rules (Permanent Notes)
-        notes = database.get_all_notes(active_only=True)
-        rules_text = "\n".join([f"- [{n['category'].upper()}] {n['content']}" for n in notes])
-        if not rules_text:
-            rules_text = "No specific trading rules found in permanent notes."
-
-        # 3. Fetch Behavior Analysis
+        # 3. Fetch Behavioral & Emotional Context
         behavior_report = self.behavior_analyzer.generate_full_report()
         behavior_json = json.dumps(behavior_report, indent=2)
 
-        # 4. Construct Evaluation Prompt
-        prompt = (
-            f"You are the Execution Guard & Emotion Agent for a professional crypto trader.\n"
-            f"Your job is to enforce their trading rules and prevent emotional trades.\n\n"
-            
+        # 4. Construct Evaluation Prompt using UNIFIED Prompts
+        system_prompt = prompts.get_system_prompt('execution_guard')
+        
+        user_prompt = (
             f"--- TRADER'S INTENT ---\n"
             f"Asset: {symbol}\n"
             f"Their words: \"{intent_text}\"\n\n"
             
             f"--- RESEARCH SNAPSHOT ---\n"
-            f"Price: ${snapshot['market_data']['price']}\n"
-            f"1D RSI: {snapshot['technical'].get('1d', {}).get('rsi', 'N/A') if snapshot['technical'].get('1d') else 'N/A'}\n"
-            f"24h Change: {snapshot['market_data']['change_24h']}%\n"
-            f"7d Change: {snapshot['market_data']['change_7d']}%\n\n"
+            f"{snapshot_summary}\n\n"
             
-            f"--- TRADER'S PERMANENT RULES ---\n"
-            f"{rules_text}\n\n"
+            f"--- DEEP DATA CONTEXT (Portfolio/Rules/Journal) ---\n"
+            f"{feature_context}\n\n"
             
             f"--- BEHAVIORAL & EMOTIONAL CONTEXT ---\n"
             f"{behavior_json}\n\n"
             
-            "Evaluate this trade and provide a structured report covering:\n"
-            "1. POLICY ALIGNMENT: Is this trade 'In-Policy' or 'Out-of-Policy' based on their rules?\n"
-            "   (Check if they are trying to buy something oversold, if they are revenge trading, if size is mentioned etc.)\n"
-            "2. SETUP QUALITY score (1-10): Based on technical confluence and market regime.\n"
-            "3. POSITION SIZING & LEVELS: Suggest a safe size and clear invalidation level (stop loss).\n"
-            "4. EMOTIONAL CHECKLIST: Address revenge trading risk, time-of-day performance, or streak patterns detected in behavior data.\n"
-            "5. VERDICT: Explicitly state IN_POLICY or OUT_OF_POLICY with a short reasoning.\n\n"
-            "Be direct. Be the firm guardian. Reference their own rules back to them. Keep it under 250 words."
+            "Evaluate this trade based on your system instructions. Reference their own rules back to them. Be the firm guardian. Keep it under 250 words."
         )
 
-        evaluation = await get_ai_response([{"role": "user", "content": prompt}])
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+
+        evaluation = await get_ai_response(messages)
         
         if not evaluation:
             return "❌ Evaluation engine failed. Proceed with extreme caution."
@@ -84,7 +84,6 @@ class ExecutionGuardAgent:
             risk_label = "HIGH"
         
         # Simple extraction for quality score
-        import re
         score_match = re.search(r'SETUP QUALITY.*?(\d+)', evaluation_u)
         if score_match:
             quality_score = int(score_match.group(1))
@@ -96,7 +95,7 @@ class ExecutionGuardAgent:
                 skill_name="evaluate_trade_intent",
                 input_type="TRADE_INTENT",
                 input_payload=json.dumps({"symbol": symbol, "intent": intent_text}),
-                context_snapshot_id=snapshot.get('snapshot_id'),
+                context_snapshot_id=snapshot.get('snapshot_id') if snapshot else None,
                 recommendation=evaluation[:250] + "...",
                 prediction_type="RISK_LEVEL",
                 prediction_horizon=horizon,

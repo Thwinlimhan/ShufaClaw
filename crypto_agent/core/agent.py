@@ -7,16 +7,11 @@ from crypto_agent.storage import database
 from crypto_agent.data import prices as price_service
 from crypto_agent.intelligence import advisor as strategy_advisor
 from crypto_agent.intelligence.analyst import get_ai_response
-from crypto_agent.core.context_builder import build_full_context
+from crypto_agent.core import context_builder
+from crypto_agent.core import prompts
 from crypto_agent.bot.middleware import is_authorized, track_message, track_error
 
 logger = logging.getLogger(__name__)
-
-BASE_SYSTEM_PROMPT = """You are my personal crypto trading assistant.
-You are direct, data-driven, and focused on actionable insights.
-You have access to my real portfolio and real market data below.
-Never make up prices — you have real data.
-Be concise. Give specific numbers when possible."""
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles regular text messages (Chatting) and orchestrates AI responses."""
@@ -52,7 +47,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 top_skill = matches[0]['skill']
                 skill_info = ss.skills.get(top_skill, {})
                 skill_context = f"\n\n[SKILL ACTIVATED: {top_skill}]\nDescription: {skill_info.get('description')}\nFocus on {matches[0]['category']} analysis."
-                # Record initial attempt (success will be inferred if AI responds)
                 ss.record_execution(top_skill, {"query": user_text}, {"status": "activated"}, confidence=0.7)
 
         # 3. Get history from Database
@@ -61,9 +55,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # 4. Show 'typing...' in Telegram
         await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
         
-        # 5. Build Context and Payload
-        context_data = await build_full_context()
-        full_system_prompt = f"{BASE_SYSTEM_PROMPT}\n\n{context_data}{skill_context}"
+        # 5. Build Context and System Prompt (UNIFIED)
+        # Using feature_name='default' for regular chat
+        context_data = await context_builder.get_feature_context('default')
+        system_prompt = prompts.get_system_prompt('default')
+        
+        full_system_prompt = f"{system_prompt}\n\n{context_data}{skill_context}"
         
         ai_payload = [{"role": "system", "content": full_system_prompt}] + history + [{"role": "user", "content": user_text}]
         
@@ -71,11 +68,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ai_response = await get_ai_response(ai_payload)
         
         if ai_response:
-            # 6. Save everything to Database
+            # Save messages
             database.save_message("user", user_text)
             database.save_message("assistant", ai_response)
             
-            # 7. Send the answer back
+            # Send the answer
             await update.message.reply_text(ai_response)
         else:
             await update.message.reply_text("AI temporarily unavailable, try again in a moment.")
