@@ -1,0 +1,33 @@
+# Environments
+.env
+
+# Dependencies
+node_modules/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# System Generated
+.kiro/
+.npm-cache/
+.gemini/
+.agents/
+
+# Logs and temporary files
+*.log
+tmp/
+raw_output.txt
+pdf_output.txt
+hq_setup_log.txt
+
+# OS generated files
+.DS_Store
+Thumbs.db

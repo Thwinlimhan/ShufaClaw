@@ -1,0 +1,2946 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meridian OS - Crypto Intelligence Hub</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        :root {
+            --bg-color: #050505;
+            --surface-color: rgba(20, 20, 25, 0.6);
+            --surface-border: rgba(255, 255, 255, 0.08);
+            --accent-primary: #7C3AED;
+            --accent-secondary: #EC4899;
+            --text-primary: #F8FAFC;
+            --text-secondary: #94A3B8;
+            --gain: #10B981;
+            --loss: #F43F5E;
+            --warning: #F59E0B;
+            --blur: blur(20px)
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            overflow: hidden;
+            background-image: radial-gradient(circle at 15% 50%, rgba(124, 58, 237, 0.15), transparent 35%), radial-gradient(circle at 85% 30%, rgba(236, 72, 153, 0.15), transparent 35%), linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 30px 30px, 30px 30px;
+            background-position: 0 0, 0 0, center center, center center;
+            animation: bgPulse 15s ease-in-out infinite alternate;
+        }
+
+        .glass-panel {
+            background: linear-gradient(150deg, rgba(30, 30, 35, 0.7), rgba(15, 15, 20, 0.5));
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            border: 1px solid var(--surface-border);
+            border-radius: 24px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -150%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+            transform: skewX(-20deg);
+            transition: 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+        }
+
+        .glass-panel:hover::before {
+            left: 150%;
+        }
+
+        .glass-panel:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 48px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.15)
+        }
+
+        aside {
+            width: 280px;
+            height: calc(100vh - 40px);
+            margin: 20px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 10
+        }
+
+        .brand {
+            padding: 30px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--surface-border)
+        }
+
+        .brand h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, #a78bfa, #f472b6, #a78bfa);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shineText 5s linear infinite;
+            text-shadow: 0 0 20px rgba(167, 139, 250, 0.3);
+        }
+
+        .brand-version {
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            border-radius: 8px;
+            background: rgba(124, 58, 237, 0.2);
+            color: var(--accent-primary);
+            font-weight: 600;
+            letter-spacing: 1px
+        }
+
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 20px 12px;
+            flex: 1;
+            overflow-y: auto
+        }
+
+        .nav-menu::-webkit-scrollbar {
+            width: 3px
+        }
+
+        .nav-menu::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 18px;
+            border-radius: 14px;
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary)
+        }
+
+        .nav-item.active {
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(236, 72, 153, 0.2));
+            border: 1px solid rgba(124, 58, 237, 0.3);
+            color: var(--text-primary);
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.15)
+        }
+
+        .nav-icon {
+            font-size: 1.1rem;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5))
+        }
+
+        .nav-badge {
+            position: absolute;
+            right: 12px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 6px;
+            background: var(--accent-primary);
+            color: #fff;
+            min-width: 18px;
+            text-align: center
+        }
+
+        .sidebar-bottom {
+            padding: 16px;
+            border-top: 1px solid var(--surface-border)
+        }
+
+        .kbd-shortcut-hint {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            justify-content: center;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 12px
+        }
+
+        .kbd-shortcut-hint kbd,
+        .kbd-hint {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--text-secondary);
+            font-family: monospace
+        }
+
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.8rem;
+            color: var(--text-secondary)
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--gain);
+            box-shadow: 0 0 10px var(--gain);
+            animation: pulse 2s infinite;
+            flex-shrink: 0
+        }
+
+        .status-indicator.offline {
+            background: var(--loss);
+            box-shadow: 0 0 10px var(--loss);
+            animation: none
+        }
+
+        .uptime-badge {
+            margin-left: auto;
+            font-size: 0.7rem;
+            font-family: monospace;
+            color: var(--gain);
+            background: rgba(16, 185, 129, 0.1);
+            padding: 2px 8px;
+            border-radius: 6px
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 20px 20px 20px 0;
+            position: relative
+        }
+
+        .connection-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(244, 63, 94, 0.15), rgba(244, 63, 94, 0.05));
+            border: 1px solid rgba(244, 63, 94, 0.3);
+            color: var(--loss);
+            font-size: 0.9rem;
+            animation: bannerPulse 2s infinite
+        }
+
+        .reconnect-btn {
+            background: var(--loss);
+            color: #fff;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s
+        }
+
+        .reconnect-btn:hover {
+            opacity: 0.8
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 28px;
+            margin-bottom: 20px
+        }
+
+        .metrics-container {
+            display: flex;
+            gap: 36px
+        }
+
+        .metric {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            position: relative
+        }
+
+        .metric-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary)
+        }
+
+        .metric-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary)
+        }
+
+        .metric-value.gain {
+            color: var(--gain);
+            text-shadow: 0 0 15px rgba(16, 185, 129, 0.4)
+        }
+
+        .metric-value.loss {
+            color: var(--loss);
+            text-shadow: 0 0 15px rgba(244, 63, 94, 0.4)
+        }
+
+        .metric-value.warning {
+            color: var(--warning);
+            text-shadow: 0 0 15px rgba(245, 158, 11, 0.4)
+        }
+
+        .metric-value.accent {
+            color: #A78BFA;
+            text-shadow: 0 0 15px rgba(167, 139, 250, 0.4);
+        }
+
+        .metric-glow {
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: scaleX(0.5);
+            filter: drop-shadow(0 0 8px var(--accent-primary));
+        }
+
+        .metric:hover .metric-glow {
+            opacity: 1;
+            transform: scaleX(1);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px
+        }
+
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            border: 1px solid var(--surface-border);
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .icon-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .notif-count {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--loss);
+            color: #fff;
+            font-size: 0.6rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center
+        }
+
+        .time-display {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-variant-numeric: tabular-nums
+        }
+
+        .avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            padding: 2px
+        }
+
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid var(--bg-color)
+        }
+
+        .dashboard-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            -ms-overflow-style: none;
+            scrollbar-width: none
+        }
+
+        .dashboard-content::-webkit-scrollbar {
+            display: none
+        }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 20px
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px
+        }
+
+        .panel-title {
+            font-size: 1.05rem;
+            font-weight: 500;
+            color: var(--text-primary)
+        }
+
+        .panel-content {
+            padding: 22px;
+            height: 380px;
+            display: flex;
+            flex-direction: column
+        }
+
+        .chart-container {
+            flex: 1;
+            position: relative;
+            width: 100%
+        }
+
+        .double-span {
+            grid-column: span 2
+        }
+
+        .activity-feed {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            overflow-y: auto;
+            flex: 1;
+            padding-right: 10px
+        }
+
+        .activity-feed::-webkit-scrollbar {
+            width: 3px
+        }
+
+        .activity-feed::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px
+        }
+
+        .feed-item {
+            display: flex;
+            gap: 14px;
+            padding: 14px;
+            border-radius: 14px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            transition: transform 0.2s, background 0.2s
+        }
+
+        .feed-item:hover {
+            transform: translateX(5px);
+            background: rgba(255, 255, 255, 0.03)
+        }
+
+        .feed-icon {
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            background: rgba(124, 58, 237, 0.1);
+            flex-shrink: 0
+        }
+
+        .feed-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px
+        }
+
+        .feed-message {
+            font-size: 0.9rem;
+            line-height: 1.4
+        }
+
+        .feed-time {
+            font-size: 0.72rem;
+            color: var(--text-secondary)
+        }
+
+        .badge {
+            font-size: 0.65rem;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 8px;
+            letter-spacing: 0.5px;
+            height: fit-content;
+            white-space: nowrap
+        }
+
+        .badge.HIGH {
+            background: rgba(244, 63, 94, 0.2);
+            color: var(--loss);
+            border: 1px solid rgba(244, 63, 94, 0.3)
+        }
+
+        .badge.MEDIUM {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+            border: 1px solid rgba(245, 158, 11, 0.3)
+        }
+
+        .badge.LOW {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--gain);
+            border: 1px solid rgba(16, 185, 129, 0.3)
+        }
+
+        .services-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px
+        }
+
+        .service-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            transition: background 0.2s
+        }
+
+        .service-item:hover {
+            background: rgba(255, 255, 255, 0.02)
+        }
+
+        .service-info h4 {
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 4px
+        }
+
+        .service-info p {
+            font-size: 0.72rem;
+            color: var(--text-secondary)
+        }
+
+        .btn-group {
+            display: flex;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 3px;
+            border: 1px solid var(--surface-border)
+        }
+
+        .btn-group button {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 4px 12px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s
+        }
+
+        .btn-group button.active {
+            background: linear-gradient(135deg, var(--accent-primary), #9333ea);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+        }
+
+        .btn-group button:hover:not(.active) {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .link-btn {
+            background: none;
+            border: none;
+            color: var(--accent-primary);
+            font-size: 0.8rem;
+            cursor: pointer;
+            font-weight: 500;
+            transition: color 0.2s
+        }
+
+        .link-btn:hover {
+            color: #A78BFA
+        }
+
+        .search-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 15vh
+        }
+
+        .search-modal {
+            width: 560px;
+            max-height: 500px;
+            border-radius: 18px;
+            overflow: hidden
+        }
+
+        .search-modal:hover {
+            transform: none
+        }
+
+        .search-input-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--surface-border)
+        }
+
+        .search-icon {
+            font-size: 1.4rem;
+            color: var(--text-secondary)
+        }
+
+        .search-input {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            outline: none;
+            font-family: 'Outfit'
+        }
+
+        .search-results {
+            max-height: 360px;
+            overflow-y: auto;
+            padding: 8px
+        }
+
+        .search-result-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: transparent;
+            border: none;
+            width: 100%;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: background 0.2s;
+            text-align: left
+        }
+
+        .search-result-item:hover {
+            background: rgba(124, 58, 237, 0.15)
+        }
+
+        .search-result-icon {
+            font-size: 1.3rem;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: rgba(124, 58, 237, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center
+        }
+
+        .search-result-name {
+            font-weight: 500;
+            font-size: 0.95rem
+        }
+
+        .search-result-desc {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 2px
+        }
+
+        .notif-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 999;
+            background: transparent
+        }
+
+        .notif-panel {
+            position: fixed;
+            top: 80px;
+            right: 40px;
+            width: 380px;
+            max-height: 480px;
+            border-radius: 18px;
+            overflow: hidden;
+            z-index: 1000
+        }
+
+        .notif-panel:hover {
+            transform: none
+        }
+
+        .notif-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--surface-border)
+        }
+
+        .notif-header h3 {
+            font-size: 1rem;
+            font-weight: 600
+        }
+
+        .notif-clear {
+            background: none;
+            border: none;
+            color: var(--accent-primary);
+            font-size: 0.8rem;
+            cursor: pointer;
+            font-weight: 500
+        }
+
+        .notif-list {
+            max-height: 380px;
+            overflow-y: auto;
+            padding: 8px
+        }
+
+        .notif-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            margin-bottom: 4px;
+            transition: background 0.2s
+        }
+
+        .notif-item:hover {
+            background: rgba(255, 255, 255, 0.03)
+        }
+
+        .notif-icon {
+            font-size: 1.2rem
+        }
+
+        .notif-body {
+            flex: 1
+        }
+
+        .notif-msg {
+            font-size: 0.85rem;
+            line-height: 1.4
+        }
+
+        .notif-time {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-top: 4px
+        }
+
+        .notif-empty {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 40px;
+            font-size: 0.9rem
+        }
+
+        .health-gauges {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 16px 0
+        }
+
+        .gauge-item {
+            position: relative;
+            width: 120px;
+            height: 120px
+        }
+
+        .gauge-ring {
+            width: 100%;
+            height: 100%
+        }
+
+        .gauge-ring circle {
+            transition: stroke-dasharray 1s ease
+        }
+
+        .gauge-text {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center
+        }
+
+        .gauge-val {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text-primary)
+        }
+
+        .gauge-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px
+        }
+
+        .health-details {
+            border-top: 1px solid var(--surface-border);
+            padding-top: 14px
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 0.8rem;
+            color: var(--text-secondary)
+        }
+
+        .detail-row span:last-child {
+            color: var(--text-primary);
+            font-family: monospace;
+            font-size: 0.85rem
+        }
+
+        .stat-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px
+        }
+
+        .stat-card {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 14px;
+            padding: 16px;
+            text-align: center;
+            transition: border-color 0.3s, transform 0.2s
+        }
+
+        .stat-card:hover {
+            border-color: rgba(124, 58, 237, 0.3);
+            transform: translateY(-2px)
+        }
+
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1;
+            margin-bottom: 6px
+        }
+
+        .stat-number.accent {
+            color: #A78BFA
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px
+        }
+
+        .live-dot {
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: var(--gain);
+            padding: 3px 10px;
+            border-radius: 8px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            animation: livePulse 2s infinite
+        }
+
+        .log-viewer {
+            flex: 1;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.78rem;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.04)
+        }
+
+        .log-viewer::-webkit-scrollbar {
+            width: 4px
+        }
+
+        .log-viewer::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px
+        }
+
+        .log-entry {
+            display: flex;
+            gap: 10px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            line-height: 1.6
+        }
+
+        .log-entry:hover {
+            background: rgba(255, 255, 255, 0.02)
+        }
+
+        .log-time {
+            color: var(--text-secondary);
+            white-space: nowrap
+        }
+
+        .log-level {
+            font-weight: 700;
+            width: 55px;
+            text-align: center
+        }
+
+        .log-source {
+            color: var(--accent-primary);
+            white-space: nowrap
+        }
+
+        .log-msg {
+            color: var(--text-primary);
+            word-break: break-all
+        }
+
+        .log-INFO .log-level {
+            color: var(--gain)
+        }
+
+        .log-WARNING .log-level {
+            color: var(--warning)
+        }
+
+        .log-ERROR .log-level {
+            color: var(--loss)
+        }
+
+        .log-DEBUG .log-level {
+            color: var(--text-secondary)
+        }
+
+        .cron-item {
+            transition: background 0.2s, border-color 0.2s
+        }
+
+        .cron-item:hover {
+            background: rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.08)
+        }
+
+        .cron-schedule {
+            font-family: monospace;
+            color: var(--accent-primary);
+            font-size: 0.8rem
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left
+        }
+
+        .data-table .table-header {
+            border-bottom: 1px solid var(--surface-border);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            letter-spacing: 1px
+        }
+
+        .data-table th {
+            padding: 12px;
+            font-weight: 500
+        }
+
+        .data-table td {
+            padding: 14px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03)
+        }
+
+        .asset-cell {
+            display: flex;
+            align-items: center;
+            gap: 12px
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%
+        }
+
+        .fw-600 {
+            font-weight: 600
+        }
+
+        .mono {
+            font-family: monospace;
+            font-size: 1.05rem
+        }
+
+        .gain {
+            color: var(--gain)
+        }
+
+        .loss {
+            color: var(--loss)
+        }
+
+        .stat-hero {
+            align-items: center;
+            justify-content: center;
+            text-align: center
+        }
+
+        .stat-hero-title {
+            margin-bottom: 16px;
+            position: absolute;
+            top: 22px;
+            left: 22px
+        }
+
+        .stat-hero-value {
+            font-size: 3.5rem;
+            font-weight: 700;
+            line-height: 1
+        }
+
+        .stat-hero-sub {
+            color: var(--text-secondary);
+            margin-top: 12px;
+            font-size: 0.85rem
+        }
+
+        .chat-input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px 22px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: 'Outfit';
+            outline: none;
+            transition: border-color 0.3s
+        }
+
+        .chat-input:focus {
+            border-color: rgba(124, 58, 237, 0.5)
+        }
+
+        .journal-textarea {
+            width: 100%;
+            height: 300px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 16px;
+            color: var(--text-primary);
+            resize: none;
+            margin-bottom: 20px;
+            font-family: 'Outfit';
+            font-size: 1rem;
+            outline: none
+        }
+
+        .journal-textarea:focus {
+            border-color: rgba(124, 58, 237, 0.3)
+        }
+
+        .toggle {
+            width: 48px;
+            height: 26px;
+            border-radius: 13px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s
+        }
+
+        .toggle.on {
+            background: var(--gain)
+        }
+
+        .toggle.off {
+            background: var(--loss)
+        }
+
+        .toggle-knob {
+            width: 18px;
+            height: 18px;
+            background: #fff;
+            border-radius: 50%;
+            position: absolute;
+            top: 4px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3)
+        }
+
+        .toggle.on .toggle-knob {
+            right: 4px
+        }
+
+        .toggle.off .toggle-knob {
+            left: 4px
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 3px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05)
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            box-shadow: 0 0 10px rgba(236, 72, 153, 0.5);
+            transition: width 0.6s ease
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 40px;
+            font-size: 0.9rem
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4)
+            }
+
+            70% {
+                box-shadow: 0 0 0 8px rgba(16, 185, 129, 0)
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0)
+            }
+        }
+
+        @keyframes livePulse {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: 0.5
+            }
+        }
+
+        @keyframes bannerPulse {
+
+            0%,
+            100% {
+                border-color: rgba(244, 63, 94, 0.3)
+            }
+
+            50% {
+                border-color: rgba(244, 63, 94, 0.6)
+            }
+        }
+
+        .fade-enter {
+            animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.98);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0px)
+            }
+
+            50% {
+                transform: translateY(-8px)
+            }
+
+            100% {
+                transform: translateY(0px)
+            }
+        }
+
+        @keyframes shineText {
+            to {
+                background-position: 200% center;
+            }
+        }
+
+        @keyframes bgPulse {
+            0% {
+                background-position: 0% 0%, 0% 0%, center center, center center;
+            }
+
+            100% {
+                background-position: 10% 5%, -10% -5%, center center, center center;
+            }
+        }
+
+        /* NEW AGENT FEATURES CSS */
+        .kanban-board {
+            display: flex;
+            gap: 20px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            height: 100%;
+        }
+
+        .kanban-column {
+            flex: 1;
+            min-width: 280px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .kanban-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-weight: 500;
+            padding: 0 4px;
+        }
+
+        .kanban-count {
+            font-size: 0.7rem;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .kanban-card {
+            background: linear-gradient(145deg, rgba(30, 30, 35, 0.8), rgba(20, 20, 25, 0.6));
+            border: 1px solid var(--surface-border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kanban-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+            transform: skewX(-20deg);
+            transition: 0.5s;
+        }
+
+        .kanban-card:hover::after {
+            left: 150%;
+        }
+
+        .kanban-card:hover {
+            transform: translateY(-4px) scale(1.02);
+            border-color: rgba(124, 58, 237, 0.4);
+            box-shadow: 0 8px 20px rgba(124, 58, 237, 0.15);
+        }
+
+        .card-title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+
+        .card-desc {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+            margin-bottom: 8px;
+        }
+
+        .card-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .terminal-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(15, 15, 20, 0.95), rgba(10, 10, 12, 0.98));
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8), 0 8px 32px rgba(0, 0, 0, 0.4);
+            position: relative;
+        }
+
+        .terminal-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(124, 58, 237, 0.03) 2px, rgba(124, 58, 237, 0.03) 4px);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .terminal-header {
+            background: rgba(30, 30, 40, 0.9);
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .terminal-body {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .terminal-line {
+            display: flex;
+            gap: 10px;
+        }
+
+        .terminal-prompt {
+            color: var(--accent-primary);
+            white-space: nowrap;
+        }
+
+        .terminal-input-line {
+            display: flex;
+            gap: 10px;
+            margin-top: auto;
+            padding-top: 10px;
+        }
+
+        .terminal-input {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            flex: 1;
+            outline: none;
+        }
+
+        .agent-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+        }
+
+        .agent-avatar-large {
+            width: 140px;
+            height: 140px;
+            border-radius: 28px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary), #3b82f6);
+            background-size: 200% 200%;
+            padding: 4px;
+            margin: 0 auto 20px;
+            box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3);
+            animation: gradientMove 3s ease infinite;
+        }
+
+        @keyframes gradientMove {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .agent-avatar-large img {
+            width: 100%;
+            height: 100%;
+            border-radius: 24px;
+            background: var(--bg-color);
+            object-fit: cover;
+            border: 2px solid rgba(0, 0, 0, 0.5);
+        }
+
+        .skill-tag {
+            display: inline-block;
+            padding: 4px 10px;
+            background: rgba(124, 58, 237, 0.15);
+            border: 1px solid rgba(124, 58, 237, 0.3);
+            border-radius: 8px;
+            font-size: 0.75rem;
+            color: var(--text-primary);
+            margin: 0 4px 4px 0;
+        }
+    </style>
+</head>
+
+<body x-data="dashboardData()" @keydown.window="handleKeydown($event)">
+
+    <!-- Ctrl+K Search Modal -->
+    <div class="search-overlay" x-show="searchOpen" x-transition.opacity @click.self="searchOpen = false"
+        style="display:none;">
+        <div class="search-modal glass-panel" @click.stop>
+            <div class="search-input-wrap">
+                <span class="search-icon">⌕</span>
+                <input type="text" x-model="searchQuery" x-ref="searchInput"
+                    placeholder="Search pages, commands, assets..." @input="filterSearch()" class="search-input"
+                    autofocus>
+                <kbd class="kbd-hint">ESC</kbd>
+            </div>
+            <div class="search-results" x-show="searchResults.length">
+                <template x-for="(r, i) in searchResults" :key="i">
+                    <button class="search-result-item" @click="currentPage = r.id; searchOpen = false;">
+                        <span class="search-result-icon" x-text="r.icon"></span>
+                        <div>
+                            <div class="search-result-name" x-text="r.name"></div>
+                            <div class="search-result-desc" x-text="r.desc"></div>
+                        </div>
+                    </button>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Panel -->
+    <div class="notif-overlay" x-show="notifOpen" x-transition.opacity @click.self="notifOpen = false"
+        style="display:none;">
+        <div class="notif-panel glass-panel" @click.stop>
+            <div class="notif-header">
+                <h3>Notifications</h3>
+                <button @click="notifications = []; notifOpen = false" class="notif-clear">Clear All</button>
+            </div>
+            <div class="notif-list">
+                <template x-for="(n, i) in notifications" :key="i">
+                    <div class="notif-item" :class="n.type">
+                        <span class="notif-icon" x-text="n.icon"></span>
+                        <div class="notif-body">
+                            <div class="notif-msg" x-text="n.message"></div>
+                            <div class="notif-time" x-text="n.time"></div>
+                        </div>
+                    </div>
+                </template>
+                <div x-show="!notifications.length" class="notif-empty">No notifications yet</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="glass-panel">
+        <div class="brand">
+            <h1>MERIDIAN OS</h1>
+            <span class="brand-version">v2.0</span>
+        </div>
+        <div class="nav-menu">
+            <template x-for="item in navItems" :key="item.id">
+                <button @click="currentPage = item.id" class="nav-item" :class="{'active': currentPage === item.id}"
+                    :title="item.name">
+                    <span class="nav-icon" x-text="item.icon"></span>
+                    <span x-text="item.name"></span>
+                    <span class="nav-badge" x-show="item.badge" x-text="item.badge"></span>
+                </button>
+            </template>
+        </div>
+        <div class="sidebar-bottom">
+            <div class="kbd-shortcut-hint">
+                <kbd>Ctrl</kbd>+<kbd>K</kbd> Search
+            </div>
+            <div class="system-status">
+                <div class="status-indicator" :class="streamActive ? '' : 'offline'"></div>
+                <span x-text="streamActive ? 'UPLINK ACTIVE' : 'DISCONNECTED'"></span>
+                <span class="uptime-badge" x-text="state.system?.uptime || '0h 0m'" x-show="streamActive"></span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main View -->
+    <main>
+        <!-- Connection Banner -->
+        <div class="connection-banner" x-show="!streamActive" x-transition>
+            <span>⚠️ Connection to Meridian backend lost. Attempting reconnect...</span>
+            <button @click="connectSSE()" class="reconnect-btn">Reconnect</button>
+        </div>
+
+        <!-- Dynamic Header -->
+        <header class="glass-panel">
+            <div class="metrics-container">
+                <div class="metric">
+                    <span class="metric-label">Net Equity</span>
+                    <span class="metric-value" x-text="'$' + formatNumber(state.portfolio_value)"></span>
+                    <div class="metric-glow"></div>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">24H Flux</span>
+                    <span class="metric-value" :class="state.portfolio_change_24h >= 0 ? 'gain' : 'loss'"
+                        x-text="formatPercent(state.portfolio_change_24h)"></span>
+                    <div class="metric-glow"></div>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">BTC Index</span>
+                    <span class="metric-value" x-text="'$' + formatNumber(state.btc_price)"></span>
+                    <div class="metric-glow"></div>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">ETH Index</span>
+                    <span class="metric-value" x-text="'$' + formatNumber(state.eth_price)"></span>
+                    <div class="metric-glow"></div>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Sentiment</span>
+                    <span class="metric-value warning" x-text="state.fear_greed"></span>
+                    <div class="metric-glow"></div>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Triggers</span>
+                    <span class="metric-value accent" x-text="state.active_alerts"></span>
+                    <div class="metric-glow"></div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="icon-btn" @click="searchOpen = true; $nextTick(() => $refs.searchInput.focus())"
+                    title="Search (Ctrl+K)">⌕</button>
+                <button class="icon-btn notif-btn" @click="notifOpen = !notifOpen" title="Notifications">
+                    🔔<span class="notif-count" x-show="notifications.length" x-text="notifications.length"></span>
+                </button>
+                <span class="time-display" x-text="currentTime"></span>
+                <div class="avatar">
+                    <img src="https://ui-avatars.com/api/?name=Admin&background=141419&color=fff&bold=true" alt="Admin">
+                </div>
+            </div>
+        </header>
+
+        <!-- Content Router -->
+        <div class="dashboard-content">
+
+            <!-- ===== COMMAND CENTER ===== -->
+            <div x-show="currentPage === 'command_center'" class="fade-enter">
+                <div class="grid-layout">
+                    <div class="glass-panel panel-content">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Asset Allocation</h3>
+                        </div>
+                        <div class="chart-container"><canvas id="portfolioDonut"></canvas></div>
+                    </div>
+                    <div class="glass-panel panel-content double-span">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Capital Trajectory</h3>
+                            <div class="btn-group">
+                                <button :class="chartRange === '7D' ? 'active' : ''"
+                                    @click="chartRange = '7D'">7D</button>
+                                <button :class="chartRange === '30D' ? 'active' : ''"
+                                    @click="chartRange = '30D'">30D</button>
+                                <button :class="chartRange === '90D' ? 'active' : ''"
+                                    @click="chartRange = '90D'">90D</button>
+                            </div>
+                        </div>
+                        <div class="chart-container"><canvas id="equityCurve"></canvas></div>
+                    </div>
+                </div>
+                <div class="grid-layout">
+                    <div class="glass-panel panel-content double-span">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Intelligence Stream</h3>
+                        </div>
+                        <div class="activity-feed">
+                            <template x-for="(log, i) in state.activity_log" :key="i">
+                                <div class="feed-item">
+                                    <div class="feed-icon" x-text="getIconForType(log.type)"></div>
+                                    <div class="feed-content">
+                                        <div class="feed-message" x-text="log.message"></div>
+                                        <div class="feed-time" x-text="log.time"></div>
+                                    </div>
+                                    <template x-if="log.severity">
+                                        <div class="badge" :class="log.severity" x-text="log.severity"></div>
+                                    </template>
+                                </div>
+                            </template>
+                            <div x-show="!state.activity_log.length" class="empty-state">Awaiting Intelligence
+                                Signals...</div>
+                        </div>
+                    </div>
+                    <div class="glass-panel panel-content">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Core Subsystems</h3>
+                        </div>
+                        <div class="services-list">
+                            <div class="service-item">
+                                <div class="service-info">
+                                    <h4>Arbitrage Scanner</h4>
+                                    <p>Next sequence in 2m 14s</p>
+                                </div>
+                                <div class="status-indicator"></div>
+                            </div>
+                            <div class="service-item">
+                                <div class="service-info">
+                                    <h4>Airdrop Hub</h4>
+                                    <p>Tracking 14 protocols</p>
+                                </div>
+                                <div class="status-indicator"></div>
+                            </div>
+                            <div class="service-item">
+                                <div class="service-info">
+                                    <h4>Cognitive Loop</h4>
+                                    <p>Cycle generation #142</p>
+                                </div>
+                                <div class="status-indicator"></div>
+                            </div>
+                            <div class="service-item">
+                                <div class="service-info">
+                                    <h4>Evolution Engine</h4>
+                                    <p>Processing session data...</p>
+                                </div>
+                                <div class="status-indicator"
+                                    style="background:var(--warning);box-shadow:0 0 10px var(--warning)"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- System Health Panel (NEW - inspired by OpenClaw) -->
+                <div class="grid-layout" style="margin-top:24px">
+                    <div class="glass-panel panel-content" style="height:auto">
+                        <div class="panel-header">
+                            <h3 class="panel-title">⚡ System Health Monitor</h3><span class="live-dot">LIVE</span>
+                        </div>
+                        <div class="health-gauges">
+                            <div class="gauge-item">
+                                <svg class="gauge-ring" viewBox="0 0 120 120">
+                                    <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.05)"
+                                        stroke-width="8" />
+                                    <circle cx="60" cy="60" r="52" fill="none" stroke="url(#cpuGrad)" stroke-width="8"
+                                        stroke-linecap="round"
+                                        :stroke-dasharray="(state.system?.cpu || 0) * 3.27 + ' 327'"
+                                        stroke-dashoffset="0" transform="rotate(-90 60 60)" />
+                                    <defs>
+                                        <linearGradient id="cpuGrad">
+                                            <stop offset="0%" stop-color="#10B981" />
+                                            <stop offset="100%" stop-color="#F59E0B" />
+                                        </linearGradient>
+                                    </defs>
+                                </svg>
+                                <div class="gauge-text"><span class="gauge-val"
+                                        x-text="(state.system?.cpu || 0) + '%'"></span><span
+                                        class="gauge-label">CPU</span></div>
+                            </div>
+                            <div class="gauge-item">
+                                <svg class="gauge-ring" viewBox="0 0 120 120">
+                                    <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.05)"
+                                        stroke-width="8" />
+                                    <circle cx="60" cy="60" r="52" fill="none" stroke="url(#memGrad)" stroke-width="8"
+                                        stroke-linecap="round"
+                                        :stroke-dasharray="(state.system?.memory || 0) * 3.27 + ' 327'"
+                                        stroke-dashoffset="0" transform="rotate(-90 60 60)" />
+                                    <defs>
+                                        <linearGradient id="memGrad">
+                                            <stop offset="0%" stop-color="#7C3AED" />
+                                            <stop offset="100%" stop-color="#EC4899" />
+                                        </linearGradient>
+                                    </defs>
+                                </svg>
+                                <div class="gauge-text"><span class="gauge-val"
+                                        x-text="(state.system?.memory || 0) + '%'"></span><span
+                                        class="gauge-label">Memory</span></div>
+                            </div>
+                            <div class="gauge-item">
+                                <svg class="gauge-ring" viewBox="0 0 120 120">
+                                    <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.05)"
+                                        stroke-width="8" />
+                                    <circle cx="60" cy="60" r="52" fill="none" stroke="url(#diskGrad)" stroke-width="8"
+                                        stroke-linecap="round"
+                                        :stroke-dasharray="(state.system?.disk || 0) * 3.27 + ' 327'"
+                                        stroke-dashoffset="0" transform="rotate(-90 60 60)" />
+                                    <defs>
+                                        <linearGradient id="diskGrad">
+                                            <stop offset="0%" stop-color="#3B82F6" />
+                                            <stop offset="100%" stop-color="#06B6D4" />
+                                        </linearGradient>
+                                    </defs>
+                                </svg>
+                                <div class="gauge-text"><span class="gauge-val"
+                                        x-text="(state.system?.disk || 0) + '%'"></span><span
+                                        class="gauge-label">Disk</span></div>
+                            </div>
+                        </div>
+                        <div class="health-details">
+                            <div class="detail-row"><span>Memory Used</span><span
+                                    x-text="(state.system?.memory_used_gb||0)+'GB / '+(state.system?.memory_total_gb||0)+'GB'"></span>
+                            </div>
+                            <div class="detail-row"><span>Disk Used</span><span
+                                    x-text="(state.system?.disk_used_gb||0)+'GB / '+(state.system?.disk_total_gb||0)+'GB'"></span>
+                            </div>
+                            <div class="detail-row"><span>Uptime</span><span
+                                    x-text="state.system?.uptime || 'N/A'"></span></div>
+                        </div>
+                    </div>
+                    <!-- Quick Stats Cards (NEW) -->
+                    <div class="glass-panel panel-content" style="height:auto">
+                        <div class="panel-header">
+                            <h3 class="panel-title">📊 Quick Stats</h3>
+                        </div>
+                        <div class="stat-cards">
+                            <div class="stat-card">
+                                <div class="stat-number" x-text="dashStats.total_positions || 0"></div>
+                                <div class="stat-label">Positions</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" x-text="dashStats.active_alerts || 0"></div>
+                                <div class="stat-label">Active Alerts</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" x-text="dashStats.journal_entries_week || 0"></div>
+                                <div class="stat-label">Journal (7d)</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" x-text="dashStats.scans_today || 0"></div>
+                                <div class="stat-label">Scans Today</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" x-text="dashStats.scheduled_tasks || 0"></div>
+                                <div class="stat-label">Cron Jobs</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number accent" x-text="state.fear_greed || 0"></div>
+                                <div class="stat-label">Fear/Greed</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Upcoming Scheduled Tasks Preview -->
+                    <div class="glass-panel panel-content" style="height:auto">
+                        <div class="panel-header">
+                            <h3 class="panel-title">⏰ Next Scheduled</h3>
+                            <button class="link-btn" @click="currentPage = 'scheduler'">View All →</button>
+                        </div>
+                        <div class="services-list">
+                            <template x-for="task in scheduledTasks.slice(0, 4)" :key="task.name">
+                                <div class="service-item">
+                                    <div class="service-info">
+                                        <h4><span x-text="task.icon"></span> <span x-text="task.name"></span></h4>
+                                        <p x-text="task.schedule"></p>
+                                    </div>
+                                    <div class="status-indicator" :class="task.status === 'active' ? '' : 'offline'">
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== PORTFOLIO ===== -->
+            <div x-show="currentPage === 'portfolio'" class="fade-enter" style="display:none;">
+                <div class="glass-panel panel-content" style="height:auto;min-height:500px">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Asset Inventory Map</h3>
+                        <button class="link-btn" @click="fetchPortfolio()">Refresh ↻</button>
+                    </div>
+                    <table class="data-table">
+                        <tr class="table-header">
+                            <th>ASSET</th>
+                            <th>QUANTITY</th>
+                            <th>AVG PRICE</th>
+                            <th>CURRENT</th>
+                            <th>VALUE (USD)</th>
+                            <th>24H FLUX</th>
+                            <th>P&L</th>
+                        </tr>
+                        <template x-for="pos in portfolioPositions" :key="pos.symbol">
+                            <tr>
+                                <td class="asset-cell">
+                                    <div class="dot"
+                                        :style="'background:' + getAssetColor(pos.symbol) + ';box-shadow:0 0 10px ' + getAssetColor(pos.symbol)">
+                                    </div>
+                                    <span class="fw-600" x-text="pos.symbol"></span>
+                                </td>
+                                <td x-text="pos.quantity"></td>
+                                <td class="mono" x-text="'$' + formatNumber(pos.avg_price)"></td>
+                                <td class="mono" x-text="'$' + formatNumber(pos.current_price)"></td>
+                                <td class="mono" x-text="'$' + formatNumber(pos.value)"></td>
+                                <td :class="pos.change_24h >= 0 ? 'gain' : 'loss'"
+                                    x-text="formatPercent(pos.change_24h)"></td>
+                                <td :class="pos.pnl >= 0 ? 'gain' : 'loss'"
+                                    x-text="(pos.pnl >= 0 ? '+' : '') + '$' + formatNumber(Math.abs(pos.pnl))"></td>
+                            </tr>
+                        </template>
+                    </table>
+                    <div x-show="!portfolioPositions.length" class="empty-state" style="margin-top:40px">
+                        No positions found. Add positions via Telegram bot commands.
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== SCANNER ===== -->
+            <div x-show="currentPage === 'scanner'" class="fade-enter" style="display:none;">
+                <div class="glass-panel panel-content" style="height:auto;min-height:500px">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Scanner Event Feed</h3>
+                        <button class="link-btn" @click="fetchScannerEvents()">Refresh ↻</button>
+                    </div>
+                    <div class="services-list">
+                        <template x-for="(evt, i) in scannerEvents" :key="i">
+                            <div class="service-item">
+                                <div class="service-info">
+                                    <h4 style="font-size:1.1rem;color:#fff">
+                                        <span x-text="evt.symbol || 'MARKET'"></span>
+                                        <span style="font-size:0.8rem;color:var(--accent-primary);margin-left:8px"
+                                            x-text="'[' + (evt.scan_type || 'scan') + ']'"></span>
+                                    </h4>
+                                    <p x-text="evt.details || 'Event detected'"></p>
+                                    <p style="font-size:0.7rem;color:var(--text-secondary);margin-top:4px"
+                                        x-text="evt.created_at || ''"></p>
+                                </div>
+                                <div class="badge MEDIUM" x-text="evt.was_notified ? 'NOTIFIED' : 'SILENT'"></div>
+                            </div>
+                        </template>
+                    </div>
+                    <div x-show="!scannerEvents.length" class="empty-state" style="margin-top:40px">
+                        No scanner events yet. Events will appear as the scanner runs.
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== ALERTS ===== -->
+            <div x-show="currentPage === 'alerts'" class="fade-enter" style="display:none;">
+                <div class="glass-panel panel-content" style="height:auto;min-height:500px">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Active Triggers & Thresholds</h3>
+                        <button class="link-btn" @click="fetchAlerts()">Refresh ↻</button>
+                    </div>
+                    <div class="services-list">
+                        <template x-for="(a, i) in alertsList" :key="i">
+                            <div class="service-item">
+                                <div class="service-info">
+                                    <h4 style="font-size:1.1rem;color:#fff">
+                                        <span x-text="a.symbol || 'UNKNOWN'"></span>
+                                        <span x-text="(a.direction || 'above') === 'above' ? ' ▲ ' : ' ▼ '"></span>
+                                        <span x-text="'$' + formatNumber(a.target_price || 0)"></span>
+                                    </h4>
+                                    <p>
+                                        <span x-text="'Created: ' + (a.created_at || 'Unknown')"></span>
+                                        <span x-show="a.notes" x-text="' • ' + a.notes"></span>
+                                    </p>
+                                </div>
+                                <div class="badge" :class="a.is_active ? 'LOW' : 'MEDIUM'"
+                                    x-text="a.is_active ? 'ARMED' : 'TRIGGERED'"></div>
+                            </div>
+                        </template>
+                    </div>
+                    <div x-show="!alertsList.length" class="empty-state" style="margin-top:40px">
+                        No alerts configured. Create alerts via Telegram bot.
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== JOURNAL ===== -->
+            <div x-show="currentPage === 'journal'" class="fade-enter" style="display:none;">
+                <div class="grid-layout">
+                    <div class="glass-panel panel-content double-span" style="height:auto;min-height:500px">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Cognitive Memory Stream</h3>
+                            <button class="link-btn" @click="fetchJournal()">Refresh ↻</button>
+                        </div>
+                        <div class="activity-feed">
+                            <template x-for="(entry, i) in journalEntries" :key="i">
+                                <div class="feed-item" style="padding:24px">
+                                    <div class="feed-icon" style="background:rgba(16,185,129,0.1);color:var(--gain)">✧
+                                    </div>
+                                    <div class="feed-content">
+                                        <div class="feed-message" style="font-size:1.05rem;color:#fff"
+                                            x-text="entry.content"></div>
+                                        <div class="feed-time" style="margin-top:8px">
+                                            <span x-text="entry.created_at || 'Unknown date'"></span>
+                                            <span x-show="entry.symbol" class="badge LOW" style="margin-left:8px"
+                                                x-text="entry.symbol"></span>
+                                            <span x-show="entry.entry_type"
+                                                style="margin-left:8px;font-size:0.7rem;color:var(--accent-primary)"
+                                                x-text="'[' + entry.entry_type + ']'"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                            <div x-show="!journalEntries.length" class="empty-state">
+                                No journal entries yet. Write your first one →
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-panel panel-content" style="height:auto;min-height:500px">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Log New Directive</h3>
+                        </div>
+                        <textarea class="journal-textarea" x-model="journalInput"
+                            placeholder="Input cognitive reflection or trade reasoning here..."></textarea>
+                        <div class="btn-group" style="width:100%;display:flex"><button class="active"
+                                @click="submitJournal()" style="flex:1;padding:16px;font-size:1rem">Commit to
+                                Memory</button></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== ANALYTICS ===== -->
+            <div x-show="currentPage === 'analytics'" class="fade-enter" style="display:none;">
+                <div class="grid-layout">
+                    <div class="glass-panel panel-content stat-hero">
+                        <h3 class="panel-title stat-hero-title">Prediction Accuracy</h3>
+                        <div class="stat-hero-value" style="color:var(--accent-primary)"
+                            x-text="(analyticsData.prediction_stats?.accuracy_24h || 0).toFixed(1) + '%'"></div>
+                        <p class="stat-hero-sub">24h Prediction Hit Rate</p>
+                    </div>
+                    <div class="glass-panel panel-content stat-hero">
+                        <h3 class="panel-title stat-hero-title">Predictions Made</h3>
+                        <div class="stat-hero-value" style="color:var(--gain)"
+                            x-text="analyticsData.prediction_stats?.total_predictions || 0"></div>
+                        <p class="stat-hero-sub">Total Tracked Predictions</p>
+                    </div>
+                    <div class="glass-panel panel-content stat-hero">
+                        <h3 class="panel-title stat-hero-title">Active Positions</h3>
+                        <div class="stat-hero-value" style="color:var(--warning)"
+                            x-text="analyticsData.total_positions || 0"></div>
+                        <p class="stat-hero-sub">Portfolio Holdings</p>
+                    </div>
+                </div>
+                <div class="grid-layout" style="margin-top:20px">
+                    <div class="glass-panel panel-content stat-hero">
+                        <h3 class="panel-title stat-hero-title">Active Alerts</h3>
+                        <div class="stat-hero-value" style="color:var(--loss)"
+                            x-text="analyticsData.alert_stats?.active || 0"></div>
+                        <p class="stat-hero-sub">Armed / <span
+                                x-text="analyticsData.alert_stats?.triggered || 0"></span> Triggered</p>
+                    </div>
+                    <div class="glass-panel panel-content stat-hero">
+                        <h3 class="panel-title stat-hero-title">Journal Entries</h3>
+                        <div class="stat-hero-value" style="color:var(--accent-primary)"
+                            x-text="analyticsData.journal_entries_week || 0"></div>
+                        <p class="stat-hero-sub">Last 7 Days</p>
+                    </div>
+                    <div class="glass-panel panel-content stat-hero">
+                        <h3 class="panel-title stat-hero-title">7d Accuracy</h3>
+                        <div class="stat-hero-value" style="color:var(--gain)"
+                            x-text="(analyticsData.prediction_stats?.accuracy_7d || 0).toFixed(1) + '%'"></div>
+                        <p class="stat-hero-sub">7-Day Prediction Hit Rate</p>
+                    </div>
+                </div>
+                <div class="glass-panel panel-content" style="margin-top:20px;height:auto">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Real-Time API Tokens & Cost Tracker</h3>
+                        <button class="link-btn" @click="fetchTokens()">Refresh ↻</button>
+                    </div>
+                    <table class="data-table">
+                        <tr class="table-header">
+                            <th>FEATURE (MODULE)</th>
+                            <th>CALLS</th>
+                            <th>TOTAL TOKENS</th>
+                            <th>TOTAL COST (EST)</th>
+                        </tr>
+                        <template x-for="t in apiTokensData" :key="t.feature_name">
+                            <tr>
+                                <td class="asset-cell"><span class="fw-600" x-text="t.feature_name"></span></td>
+                                <td class="mono" x-text="t.request_count"></td>
+                                <td class="mono gain" x-text="formatNumber(t.tokens_used || 0)"></td>
+                                <td class="mono loss" x-text="'$' + formatNumber(t.total_cost || 0)"></td>
+                            </tr>
+                        </template>
+                    </table>
+                    <div x-show="!apiTokensData.length" class="empty-state" style="margin-top:20px">No API calls
+                        detected yet.</div>
+                </div>
+            </div>
+
+            <!-- ===== CHAT ===== -->
+            <div x-show="currentPage === 'chat'" class="fade-enter" style="display:none;height:100%">
+                <div class="glass-panel panel-content"
+                    style="height:calc(100vh - 160px);display:flex;flex-direction:column">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Neural Link Interface</h3>
+                    </div>
+                    <div class="activity-feed"
+                        style="flex:1;padding-bottom:20px;border-bottom:1px solid rgba(255,255,255,0.05);margin-bottom:20px">
+                        <template x-for="(msg, i) in chatMessages" :key="i">
+                            <div class="feed-item"
+                                :style="msg.role === 'user' ? 'align-self:flex-end;max-width:80%;background:rgba(124,58,237,0.1);border-color:rgba(124,58,237,0.3)' : 'align-self:flex-start;max-width:80%;background:rgba(0,0,0,0.4)'">
+                                <div class="feed-icon" x-show="msg.role === 'assistant'">⍜</div>
+                                <div class="feed-content">
+                                    <div class="feed-message" style="color:#fff" x-text="msg.text"></div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <div style="display:flex;gap:16px;align-items:center">
+                        <input type="text" class="chat-input" x-model="chatInput" @keydown.enter="submitChat()"
+                            placeholder="Transmit command to intelligence core...">
+                        <div class="btn-group"><button class="active" @click="submitChat()"
+                                style="padding:18px 32px;font-size:1rem">Transmit</button></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== ON-CHAIN ===== -->
+            <div x-show="currentPage === 'onchain'" class="fade-enter" style="display:none;">
+                <div class="glass-panel panel-content" style="height:auto;min-height:500px">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Watched Wallets & On-Chain Grid</h3>
+                        <button class="link-btn" @click="fetchWhaleActivity()">Refresh ↻</button>
+                    </div>
+                    <div class="services-list">
+                        <template x-for="(wallet, i) in whaleWallets" :key="i">
+                            <div class="service-item">
+                                <div class="service-info">
+                                    <h4 style="color:var(--gain);font-size:1.1rem;margin-bottom:8px"
+                                        x-text="wallet.nickname || 'Unknown Wallet'"></h4>
+                                    <p style="font-family:monospace;font-size:0.85rem">
+                                        <span
+                                            x-text="wallet.address ? (wallet.address.substring(0, 8) + '...' + wallet.address.slice(-6)) : 'N/A'"></span>
+                                        <span style="margin-left:12px;color:var(--text-secondary)"
+                                            x-text="'Chain: ' + (wallet.chain || 'ETH')"></span>
+                                        <span style="margin-left:12px;color:var(--text-secondary)"
+                                            x-text="'Min: $' + formatNumber(wallet.min_alert_usd || 0)"></span>
+                                    </p>
+                                </div>
+                                <div class="badge LOW" x-text="'WATCHING'"></div>
+                            </div>
+                        </template>
+                    </div>
+                    <div x-show="!whaleWallets.length" class="empty-state" style="margin-top:40px">
+                        No watched wallets. Add wallets via Telegram bot commands.
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== AIRDROPS ===== -->
+            <div x-show="currentPage === 'airdrops'" class="fade-enter" style="display:none;">
+                <div class="grid-layout">
+                    <template x-for="protocol in airdropsList" :key="protocol.name">
+                        <div class="glass-panel panel-content" style="height:240px;justify-content:space-between">
+                            <div class="panel-header">
+                                <h3 class="panel-title" x-text="protocol.name"></h3>
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:12px">
+                                <div
+                                    style="display:flex;justify-content:space-between;font-size:0.85rem;color:var(--text-secondary)">
+                                    <span>Task Completion</span><span style="color:#fff;font-weight:600"
+                                        x-text="formatPercent((protocol.current_score / (protocol.min_score_target||100)) * 100)"></span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill"
+                                        :style="'width:' + ((protocol.current_score / (protocol.min_score_target||100)) * 100) + '%'">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="btn-group" style="width:100%;display:flex;margin-top:16px"><button
+                                    style="flex:1;padding:12px">View Tasks</button></div>
+                        </div>
+                    </template>
+                </div>
+                <div x-show="!airdropsList.length" class="empty-state" style="margin-top:40px">
+                    No tracked protocols found in database.
+                </div>
+            </div>
+
+            <!-- ===== SCHEDULER (NEW) ===== -->
+            <div x-show="currentPage === 'scheduler'" class="fade-enter" style="display:none;">
+                <div class="glass-panel panel-content" style="height:auto;min-height:500px">
+                    <div class="panel-header">
+                        <h3 class="panel-title">⏱️ Scheduled Tasks & Cron Jobs</h3>
+                        <span class="live-dot">LIVE</span>
+                    </div>
+                    <div class="services-list">
+                        <template x-for="task in scheduledTasks" :key="task.name">
+                            <div class="service-item cron-item">
+                                <div class="service-info">
+                                    <h4><span x-text="task.icon" style="margin-right:8px"></span><span
+                                            x-text="task.name"></span></h4>
+                                    <p><span class="cron-schedule" x-text="task.schedule"></span></p>
+                                </div>
+                                <div style="display:flex;align-items:center;gap:12px">
+                                    <div class="badge" :class="task.status === 'active' ? 'LOW' : 'MEDIUM'"
+                                        x-text="task.status === 'active' ? 'ACTIVE' : 'PAUSED'"></div>
+                                    <div class="status-indicator" :class="task.status === 'active' ? '' : 'offline'">
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== LIVE LOGS (NEW) ===== -->
+            <div x-show="currentPage === 'logs'" class="fade-enter" style="display:none;">
+                <div class="glass-panel panel-content" style="height:calc(100vh - 160px)">
+                    <div class="panel-header">
+                        <h3 class="panel-title">📋 Live System Logs</h3>
+                        <div style="display:flex;gap:12px;align-items:center">
+                            <span class="live-dot">LIVE</span>
+                            <div class="btn-group">
+                                <button :class="logFilter === 'all' ? 'active':''" @click="logFilter='all'">All</button>
+                                <button :class="logFilter === 'ERROR' ? 'active':''"
+                                    @click="logFilter='ERROR'">Errors</button>
+                                <button :class="logFilter === 'WARNING' ? 'active':''"
+                                    @click="logFilter='WARNING'">Warnings</button>
+                                <button :class="logFilter === 'INFO' ? 'active':''"
+                                    @click="logFilter='INFO'">Info</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="log-viewer" x-ref="logViewer">
+                        <template x-for="(log, i) in filteredLogs()" :key="i">
+                            <div class="log-entry" :class="'log-' + log.level">
+                                <span class="log-time" x-text="log.time"></span>
+                                <span class="log-level" x-text="log.level"></span>
+                                <span class="log-source" x-text="'[' + log.source + ']'"></span>
+                                <span class="log-msg" x-text="log.message"></span>
+                            </div>
+                        </template>
+                        <div x-show="!logEntries.length" class="empty-state">Waiting for log entries...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== TERMINAL ===== -->
+            <div x-show="currentPage === 'terminal'" class="fade-enter" style="display:none; height:100%;">
+                <div class="terminal-container">
+                    <div class="terminal-header">
+                        <div style="display:flex;gap:6px">
+                            <div style="width:10px;height:10px;border-radius:50%;background:var(--loss)"></div>
+                            <div style="width:10px;height:10px;border-radius:50%;background:var(--warning)"></div>
+                            <div style="width:10px;height:10px;border-radius:50%;background:var(--gain)"></div>
+                        </div>
+                        <span>meridian-core-tty1</span>
+                    </div>
+                    <div class="terminal-body" @click="$refs.termInput.focus()">
+                        <div class="terminal-line"><span class="terminal-prompt">meridian@core:~$</span><span
+                                style="color:#fff">System initialized. Type 'help' for commands.</span></div>
+                        <template x-for="(line, i) in terminalLines" :key="i">
+                            <div class="terminal-line">
+                                <span class="terminal-prompt" x-show="line.type==='input'">meridian@core:~$</span>
+                                <span
+                                    :style="line.type === 'error' ? 'color:var(--loss)' : (line.type === 'response' ? 'color:var(--text-secondary)' : 'color:#fff')"
+                                    x-text="line.text"></span>
+                            </div>
+                        </template>
+                        <div class="terminal-input-line">
+                            <span class="terminal-prompt">meridian@core:~$</span>
+                            <input type="text" class="terminal-input" x-model="terminalInput" x-ref="termInput"
+                                @keydown.enter="submitTerminal()">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== TASK BOARD ===== -->
+            <div x-show="currentPage === 'tasks'" class="fade-enter" style="display:none; height:100%;">
+                <div class="panel-header">
+                    <h3 class="panel-title">Agent Kanban Board</h3>
+                </div>
+                <div class="kanban-board">
+                    <div class="kanban-column">
+                        <div class="kanban-header">
+                            <span>To Do</span>
+                            <span class="kanban-count" x-text="taskBoard.todo.length"></span>
+                        </div>
+                        <template x-for="task in taskBoard.todo" :key="task.id">
+                            <div class="kanban-card">
+                                <div class="card-title" x-text="task.title"></div>
+                                <div class="card-desc" x-text="task.desc"></div>
+                                <div class="card-meta">
+                                    <span class="badge"
+                                        :class="task.priority === 'high' ? 'HIGH' : (task.priority === 'medium' ? 'MEDIUM' : 'LOW')"
+                                        x-text="task.priority.toUpperCase()"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="kanban-column">
+                        <div class="kanban-header">
+                            <span>In Progress</span>
+                            <span class="kanban-count" x-text="taskBoard.in_progress.length"></span>
+                        </div>
+                        <template x-for="task in taskBoard.in_progress" :key="task.id">
+                            <div class="kanban-card">
+                                <div class="card-title" x-text="task.title"></div>
+                                <div class="card-desc" x-text="task.desc"></div>
+                                <div class="card-meta">
+                                    <span class="badge"
+                                        :class="task.priority === 'high' ? 'HIGH' : (task.priority === 'medium' ? 'MEDIUM' : 'LOW')"
+                                        x-text="task.priority.toUpperCase()"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="kanban-column">
+                        <div class="kanban-header">
+                            <span>Completed</span>
+                            <span class="kanban-count" x-text="taskBoard.done.length"></span>
+                        </div>
+                        <template x-for="task in taskBoard.done" :key="task.id">
+                            <div class="kanban-card" style="opacity:0.6">
+                                <div class="card-title" x-text="task.title" style="text-decoration:line-through"></div>
+                                <div class="card-desc" x-text="task.desc"></div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== AGENT PROFILE ===== -->
+            <div x-show="currentPage === 'agent'" class="fade-enter" style="display:none;">
+                <div class="agent-grid">
+                    <div class="glass-panel panel-content" style="text-align:center; height:fit-content">
+                        <div class="agent-avatar-large">
+                            <img src="https://ui-avatars.com/api/?name=Admin&background=141419&color=fff&bold=true"
+                                alt="Agent">
+                        </div>
+                        <h2 style="font-size:1.4rem;font-weight:600;margin-bottom:4px"
+                            x-text="agentProfile.name || 'Meridian Core'"></h2>
+                        <div style="font-size:0.85rem;color:var(--gain);margin-bottom:16px"><span
+                                class="status-indicator" style="display:inline-block;margin-right:6px"></span><span
+                                x-text="agentProfile.status || 'Active'"></span></div>
+                        <p style="font-size:0.8rem;color:var(--text-secondary);line-height:1.5;margin-bottom:20px">
+                            Autonomous execution engine focused on asymmetrical alpha opportunities.</p>
+
+                        <div
+                            style="text-align:left;margin-top:20px;padding-top:20px;border-top:1px solid var(--surface-border)">
+                            <div class="detail-row"><span>Intelligence Engine</span><span
+                                    x-text="agentProfile.model"></span></div>
+                            <div class="detail-row"><span>Context Window</span><span
+                                    x-text="agentProfile.context_window"></span></div>
+                            <div class="detail-row"><span>Base Temperature</span><span
+                                    x-text="agentProfile.temperature"></span></div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel panel-content" style="height:fit-content">
+                        <h3 class="panel-title" style="margin-bottom:16px">Loaded Neural Skills</h3>
+                        <div style="margin-bottom:24px">
+                            <template x-for="skill in agentProfile.skills_loaded" :key="skill">
+                                <span class="skill-tag" x-text="skill"></span>
+                            </template>
+                        </div>
+
+                        <h3 class="panel-title" style="margin-bottom:16px">Memory Buffer & Context</h3>
+                        <div class="progress-bar" style="margin-bottom:8px">
+                            <div class="progress-fill" style="width: 34%"></div>
+                        </div>
+                        <div
+                            style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text-secondary);margin-bottom:24px">
+                            <span>68k tokens used</span><span>200k max</span>
+                        </div>
+
+                        <h3 class="panel-title" style="margin-bottom:16px">Recent Tactical Decisions</h3>
+                        <div class="activity-feed" style="max-height:200px">
+                            <div class="feed-item" style="padding:10px">
+                                <div class="feed-icon" style="width:28px;height:28px;font-size:1rem;border-radius:8px">❖
+                                </div>
+                                <div class="feed-content">
+                                    <div class="feed-message" style="font-size:0.85rem">Identified spread anomaly
+                                        between Jupiter and Orca. Validating route.</div>
+                                    <div class="feed-time">4 mins ago</div>
+                                </div>
+                            </div>
+                            <div class="feed-item" style="padding:10px">
+                                <div class="feed-icon" style="width:28px;height:28px;font-size:1rem;border-radius:8px">✧
+                                </div>
+                                <div class="feed-content">
+                                    <div class="feed-message" style="font-size:0.85rem">Processed daily structural
+                                        analysis. Shifted risk bias to neutral-bear.</div>
+                                    <div class="feed-time">1 hr ago</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== SETTINGS ===== -->
+            <div x-show="currentPage === 'settings'" class="fade-enter" style="display:none;">
+                <div class="glass-panel panel-content" style="height:auto;min-height:500px">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Core System Configuration</h3>
+                    </div>
+                    <div class="services-list">
+                        <div class="service-item">
+                            <div class="service-info">
+                                <h4 style="font-size:1.1rem;color:#fff">Autonomous Strategy Execution</h4>
+                                <p>Allow intelligence hub to dispatch trades without manual override.</p>
+                            </div>
+                            <div class="toggle" :class="settingsState['Autonomous Strategy'] ? 'on' : 'off'"
+                                @click="toggleSetting('Autonomous Strategy')">
+                                <div class="toggle-knob"></div>
+                            </div>
+                        </div>
+                        <div class="service-item">
+                            <div class="service-info">
+                                <h4 style="font-size:1.1rem;color:#fff">Proactive Cognitive Loop</h4>
+                                <p>System continuously queries data endpoints to refine belief states.</p>
+                            </div>
+                            <div class="toggle" :class="settingsState['Proactive Cognitive Loop'] ? 'on' : 'off'"
+                                @click="toggleSetting('Proactive Cognitive Loop')">
+                                <div class="toggle-knob"></div>
+                            </div>
+                        </div>
+                        <div class="service-item">
+                            <div class="service-info">
+                                <h4 style="font-size:1.1rem;color:#fff">Evolution Data Collection</h4>
+                                <p>Permit storage of prompt deltas for deep learning calibration.</p>
+                            </div>
+                            <div class="toggle" :class="settingsState['Evolution Data Collection'] ? 'on' : 'off'"
+                                @click="toggleSetting('Evolution Data Collection')">
+                                <div class="toggle-knob"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('dashboardData', () => ({
+                currentPage: 'command_center',
+                streamActive: false,
+                currentTime: '',
+                searchOpen: false,
+                notifOpen: false,
+                searchQuery: '',
+                searchResults: [],
+                logFilter: 'all',
+                logEntries: [],
+                logPollInterval: null,
+                dashStats: {},
+                chatInput: '',
+                journalInput: '',
+                chartRange: '30D',
+
+                // Real data stores fetched from APIs
+                portfolioPositions: [],
+                alertsList: [],
+                journalEntries: [],
+                scannerEvents: [],
+                whaleWallets: [],
+                analyticsData: { prediction_stats: {}, journal_entries_week: 0, alert_stats: {}, total_positions: 0 },
+                apiTokensData: [],
+                airdropsList: [],
+
+                // Settings state (persisted in-memory)
+                settingsState: {
+                    'Autonomous Strategy': false,
+                    'Proactive Cognitive Loop': true,
+                    'Evolution Data Collection': true
+                },
+
+                navItems: [
+                    { id: 'command_center', name: 'Command Center', icon: '⎈' },
+                    { id: 'portfolio', name: 'Portfolio Map', icon: '⟡' },
+                    { id: 'scanner', name: 'Arbitrage Scanner', icon: '⌖' },
+                    { id: 'alerts', name: 'Active Triggers', icon: '⚡' },
+                    { id: 'journal', name: 'Cognitive Journal', icon: '✧' },
+                    { id: 'analytics', name: 'Deep Analytics', icon: '∿' },
+                    { id: 'chat', name: 'Neural Chat', icon: '⍜' },
+                    { id: 'onchain', name: 'On-Chain Grid', icon: '⎉' },
+                    { id: 'airdrops', name: 'Airdrop Hub', icon: '⚲' },
+                    { id: 'scheduler', name: 'Scheduler', icon: '⏱' },
+                    { id: 'logs', name: 'Live Logs', icon: '📋' },
+                    { id: 'settings', name: 'System Core', icon: '⚙' },
+                    { id: 'terminal', name: 'Built-in Terminal', icon: '⌨' },
+                    { id: 'tasks', name: 'Task Board', icon: '☰' },
+                    { id: 'agent', name: 'Agent Profile', icon: '🤖' }
+                ],
+
+                chatMessages: [
+                    { role: 'assistant', text: 'System online. Evolution Engine active. How can I assist you today?' }
+                ],
+
+                async submitChat() {
+                    const msg = this.chatInput.trim();
+                    if (!msg) return;
+                    this.chatMessages.push({ role: 'user', text: msg });
+                    this.chatInput = '';
+
+                    try {
+                        const res = await fetch('/api/chat', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ message: msg })
+                        });
+                        const data = await res.json();
+
+                        if (data.status === 'success') {
+                            this.chatMessages.push({ role: 'assistant', text: data.response });
+                        } else {
+                            this.chatMessages.push({ role: 'assistant', text: `Error: ${data.message || 'Communication failure.'}` });
+                        }
+                    } catch (e) {
+                        this.chatMessages.push({ role: 'assistant', text: 'Network connection to the system failed.' });
+                    }
+
+                    this.$nextTick(() => {
+                        const d = document.querySelector('.activity-feed');
+                        if (d) d.scrollTop = d.scrollHeight;
+                    });
+                },
+
+                async submitJournal() {
+                    const entry = this.journalInput.trim();
+                    if (!entry) return;
+                    try {
+                        const res = await fetch('/api/journal/create', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ content: entry, entry_type: 'reflection' })
+                        });
+                        const data = await res.json();
+                        if (data.status === 'success') {
+                            this.notifications.push({ icon: '✧', message: 'Journal entry committed to memory core', time: 'Just now', type: 'journal' });
+                            this.journalInput = '';
+                            this.fetchJournal(); // Refresh the list
+                        } else {
+                            this.notifications.push({ icon: '⚠️', message: 'Failed to save journal: ' + (data.message || 'Unknown error'), time: 'Just now', type: 'alert' });
+                        }
+                    } catch (e) {
+                        this.notifications.push({ icon: '⚠️', message: 'Network error saving journal entry', time: 'Just now', type: 'alert' });
+                    }
+                },
+
+                executeScanner(id) {
+                    this.notifications.push({ icon: '⌖', message: `Executing protocol for opportunity #${id}`, time: 'Just now', type: 'scan' });
+                },
+
+                toggleSetting(name, event) {
+                    this.settingsState[name] = !this.settingsState[name];
+                    this.notifications.push({ icon: '⚙', message: `${name}: ${this.settingsState[name] ? 'ENABLED' : 'DISABLED'}`, time: 'Just now', type: 'system' });
+                },
+
+                scheduledTasks: [
+                    { name: 'Morning Briefing', schedule: 'Daily 8:00 AM', icon: '☀️', status: 'active' },
+                    { name: 'Evening Summary', schedule: 'Daily 9:00 PM', icon: '🌙', status: 'active' },
+                    { name: 'Price Alert Scan', schedule: 'Every 30s', icon: '🔔', status: 'active' },
+                    { name: 'Market Scanner', schedule: 'Every 5 min', icon: '📡', status: 'active' },
+                    { name: 'Regime Detection', schedule: 'Every 1 hr', icon: '🌡️', status: 'active' },
+                    { name: 'Smart Money Watch', schedule: 'Every 15 min', icon: '🐋', status: 'active' },
+                    { name: 'News Sentiment', schedule: 'Every 30 min', icon: '📰', status: 'active' },
+                    { name: 'Weekly Review', schedule: 'Sun 6:00 PM', icon: '📊', status: 'active' },
+                    { name: 'Weekly Research', schedule: 'Fri 10:00 AM', icon: '🔬', status: 'active' },
+                    { name: 'Risk Review', schedule: 'Daily 3:00 PM', icon: '⚠️', status: 'active' },
+                    { name: 'Auto Backup', schedule: 'Mon 8:00 AM', icon: '💾', status: 'active' },
+                    { name: 'Prediction Verify', schedule: 'Every 6 hrs', icon: '🎯', status: 'active' },
+                ],
+
+                notifications: [],
+
+                // Searchable items with descriptions
+                searchableItems: [],
+
+                state: {
+                    portfolio_value: 0,
+                    portfolio_change_24h: 0,
+                    btc_price: 0,
+                    btc_change: 0,
+                    eth_price: 0,
+                    eth_change: 0,
+                    fear_greed: 0,
+                    fear_greed_label: 'Loading',
+                    active_alerts: 0,
+                    activity_log: [],
+                    scanner_findings: [],
+                    portfolio_items: [],
+                    system: { cpu: 0, memory: 0, disk: 0, uptime: '0h 0m 0s', memory_used_gb: 0, memory_total_gb: 0, disk_used_gb: 0, disk_total_gb: 0 }
+                },
+
+                terminalLines: [],
+                terminalInput: '',
+                agentProfile: { name: 'Loading...', skills_loaded: [] },
+                taskBoard: { todo: [], in_progress: [], done: [] },
+                donutChart: null,
+
+                async submitTerminal() {
+                    const cmd = this.terminalInput.trim();
+                    if (!cmd) return;
+
+                    if (cmd.toLowerCase() === 'clear') {
+                        this.terminalLines = [];
+                        this.terminalInput = '';
+                        return;
+                    }
+
+                    this.terminalLines.push({ type: 'input', text: cmd });
+                    const currentInput = cmd;
+                    this.terminalInput = '';
+
+                    try {
+                        const res = await fetch('/api/terminal/execute', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ command: currentInput })
+                        });
+                        const data = await res.json();
+
+                        if (data.status === 'success') {
+                            const lines = data.response.split('\\n');
+                            lines.forEach(l => this.terminalLines.push({ type: 'response', text: l }));
+                        } else {
+                            this.terminalLines.push({ type: 'error', text: data.message || 'Unknown error' });
+                        }
+                    } catch (e) {
+                        this.terminalLines.push({ type: 'error', text: 'Network connection failed' });
+                    }
+
+                    this.$nextTick(() => {
+                        const body = document.querySelector('.terminal-body');
+                        if (body) body.scrollTop = body.scrollHeight;
+                    });
+                },
+
+                async fetchAgentData() {
+                    try {
+                        const [profileRes, tasksRes] = await Promise.all([
+                            fetch('/api/agent/profile'),
+                            fetch('/api/tasks/board')
+                        ]);
+
+                        const profileData = await profileRes.json();
+                        if (profileData.status === 'success') this.agentProfile = profileData.data;
+
+                        const tasksData = await tasksRes.json();
+                        if (tasksData.status === 'success') this.taskBoard = tasksData.data;
+                    } catch (e) { }
+                },
+
+                async fetchPortfolio() {
+                    try {
+                        const res = await fetch('/api/portfolio');
+                        const data = await res.json();
+                        if (data.status === 'success') {
+                            this.portfolioPositions = data.data;
+                            this.updateDonutChart();
+                        }
+                    } catch (e) { }
+                },
+
+                async fetchAlerts() {
+                    try {
+                        const res = await fetch('/api/alerts');
+                        const data = await res.json();
+                        if (data.status === 'success') this.alertsList = data.data;
+                    } catch (e) { }
+                },
+
+                async fetchJournal() {
+                    try {
+                        const res = await fetch('/api/journal');
+                        const data = await res.json();
+                        if (data.status === 'success') this.journalEntries = data.data;
+                    } catch (e) { }
+                },
+
+                async fetchScannerEvents() {
+                    try {
+                        const res = await fetch('/api/scanner/events');
+                        const data = await res.json();
+                        if (data.status === 'success') this.scannerEvents = data.data;
+                    } catch (e) { }
+                },
+
+                async fetchWhaleActivity() {
+                    try {
+                        const res = await fetch('/api/onchain/whales');
+                        const data = await res.json();
+                        if (data.status === 'success') this.whaleWallets = data.data;
+                    } catch (e) { }
+                },
+
+                async fetchAnalytics() {
+                    try {
+                        const res = await fetch('/api/analytics/stats');
+                        const data = await res.json();
+                        if (data.status === 'success') this.analyticsData = data.data;
+                    } catch (e) { }
+                },
+
+                async fetchTokens() {
+                    try {
+                        const res = await fetch('/api/analytics/tokens');
+                        const data = await res.json();
+                        if (data.status === 'success') this.apiTokensData = data.data;
+                    } catch (e) { }
+                },
+
+                async fetchAirdrops() {
+                    try {
+                        const res = await fetch('/api/airdrops');
+                        const data = await res.json();
+                        if (data.status === 'success') this.airdropsList = data.data;
+                    } catch (e) { }
+                },
+
+                updateDonutChart() {
+                    if (!this.donutChart || !this.portfolioPositions.length) return;
+                    const labels = this.portfolioPositions.map(p => p.symbol);
+                    const values = this.portfolioPositions.map(p => p.value);
+                    this.donutChart.data.labels = labels;
+                    this.donutChart.data.datasets[0].data = values;
+                    // Generate gradient colors for each asset
+                    const colors = ['#F59E0B', '#7C3AED', '#10B981', '#3B82F6', '#EC4899', '#06B6D4', '#F43F5E', '#A78BFA'];
+                    this.donutChart.data.datasets[0].backgroundColor = labels.map((_, i) => colors[i % colors.length]);
+                    this.donutChart.update();
+                },
+
+                init() {
+                    Chart.defaults.color = '#94A3B8';
+                    Chart.defaults.font.family = 'Outfit';
+
+                    // Build searchable items from nav
+                    this.searchableItems = this.navItems.map(n => ({
+                        ...n,
+                        desc: this.getPageDesc(n.id)
+                    }));
+                    this.searchResults = [...this.searchableItems];
+
+                    this.fetchAgentData();
+                    this.fetchPortfolio();
+                    this.fetchAlerts();
+                    this.fetchJournal();
+                    this.fetchScannerEvents();
+                    this.fetchWhaleActivity();
+                    this.fetchAnalytics();
+                    this.fetchTokens();
+                    this.fetchAirdrops();
+                    this.initCharts();
+                    this.connectSSE();
+                    this.updateTime();
+                    setInterval(() => this.updateTime(), 1000);
+                    this.pollLogs();
+                    this.fetchStats();
+                    setInterval(() => this.fetchStats(), 30000);
+                    // Refresh data periodically
+                    setInterval(() => {
+                        this.fetchPortfolio();
+                        this.fetchAlerts();
+                        this.fetchScannerEvents();
+                    }, 60000);
+                },
+
+                getPageDesc(id) {
+                    const descs = {
+                        'command_center': 'Overview dashboard with charts and health',
+                        'portfolio': 'Asset allocation and holdings',
+                        'scanner': 'Arbitrage opportunity detection',
+                        'alerts': 'Price triggers and thresholds',
+                        'journal': 'Trade journal and cognitive memory',
+                        'analytics': 'Win rate, profit factor, drawdown',
+                        'chat': 'AI assistant neural link',
+                        'onchain': 'Whale tracking and blockchain data',
+                        'airdrops': 'Protocol airdrop tracker',
+                        'scheduler': 'Cron jobs and scheduled tasks',
+                        'logs': 'Real-time system log viewer',
+                        'settings': 'System configuration and toggles',
+                        'terminal': 'Direct console access to Meridian',
+                        'tasks': 'Kanban overview of agent priorities',
+                        'agent': 'Neural network state and loaded skills'
+                    };
+                    return descs[id] || '';
+                },
+
+                handleKeydown(e) {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                        e.preventDefault();
+                        this.searchOpen = !this.searchOpen;
+                        if (this.searchOpen) {
+                            this.$nextTick(() => this.$refs.searchInput?.focus());
+                        }
+                    }
+                    if (e.key === 'Escape') {
+                        this.searchOpen = false;
+                        this.notifOpen = false;
+                    }
+                    if (!this.searchOpen && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                        const num = parseInt(e.key);
+                        if (num >= 1 && num <= this.navItems.length) {
+                            this.currentPage = this.navItems[num - 1].id;
+                        }
+                    }
+                },
+
+                filterSearch() {
+                    const q = this.searchQuery.toLowerCase().trim();
+                    if (!q) {
+                        this.searchResults = [...this.searchableItems];
+                        return;
+                    }
+                    this.searchResults = this.searchableItems.filter(item =>
+                        item.name.toLowerCase().includes(q) ||
+                        item.desc.toLowerCase().includes(q)
+                    );
+                },
+
+                async fetchStats() {
+                    try {
+                        const res = await fetch('/api/stats');
+                        const data = await res.json();
+                        if (data.status === 'success') {
+                            this.dashStats = data.data;
+                        }
+                    } catch (e) { }
+                },
+
+                async pollLogs() {
+                    const fetchLogs = async () => {
+                        try {
+                            const res = await fetch('/api/logs');
+                            const data = await res.json();
+                            if (data.status === 'success') {
+                                this.logEntries = data.data;
+                            }
+                        } catch (e) { }
+                    };
+                    await fetchLogs();
+                    this.logPollInterval = setInterval(fetchLogs, 3000);
+                },
+
+                filteredLogs() {
+                    if (this.logFilter === 'all') return this.logEntries;
+                    return this.logEntries.filter(l => l.level === this.logFilter);
+                },
+
+                updateTime() {
+                    const now = new Date();
+                    this.currentTime = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' TST';
+                },
+
+                connectSSE() {
+                    const evtSource = new EventSource("/api/stream");
+                    this.streamActive = true;
+
+                    evtSource.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            if (data.btc_price !== undefined) {
+                                this.state = { ...this.state, ...data };
+                                this.streamActive = true;
+                            }
+                        } catch (e) {
+                            console.error("Stream disrupted", e);
+                        }
+                    };
+                    evtSource.onerror = () => {
+                        this.streamActive = false;
+                    };
+                },
+
+                formatNumber(num) {
+                    return parseFloat(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                },
+
+                formatPercent(num) {
+                    const prefix = num > 0 ? '+' : '';
+                    return prefix + parseFloat(num).toFixed(2) + '%';
+                },
+
+                getIconForType(type) {
+                    const icons = { 'alert': '⚡', 'scan': '⌖', 'journal': '✧', 'system': '⚙', 'trade': '⟡' };
+                    return icons[type] || '⎈';
+                },
+
+                getAssetColor(symbol) {
+                    const colors = { 'BTC': '#F59E0B', 'ETH': '#7C3AED', 'SOL': '#10B981', 'USDC': '#3B82F6', 'BNB': '#F0B90B', 'ADA': '#0033AD', 'DOT': '#E6007A', 'MATIC': '#8247E5', 'AVAX': '#E84142', 'LINK': '#2A5ADA', 'UNI': '#FF007A' };
+                    return colors[symbol] || '#A78BFA';
+                },
+
+                initCharts() {
+                    // Donut Chart
+                    const donutEl = document.getElementById('portfolioDonut');
+                    if (!donutEl) return;
+                    const ctxDonut = donutEl.getContext('2d');
+
+                    this.donutChart = new Chart(ctxDonut, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Loading...'],
+                            datasets: [{
+                                data: [1],
+                                backgroundColor: ['rgba(124, 58, 237, 0.3)'],
+                                borderWidth: 2, borderColor: '#141419', hoverOffset: 8
+                            }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true, pointStyle: 'circle' } } },
+                            cutout: '80%', layout: { padding: 10 }
+                        }
+                    });
+
+                    // Line Chart
+                    const lineEl = document.getElementById('equityCurve');
+                    if (!lineEl) return;
+                    const ctxLine = lineEl.getContext('2d');
+                    const gradientLine = ctxLine.createLinearGradient(0, 0, 0, 400);
+                    gradientLine.addColorStop(0, 'rgba(124, 58, 237, 0.5)');
+                    gradientLine.addColorStop(1, 'rgba(124, 58, 237, 0.01)');
+
+                    const labels = Array.from({ length: 30 }, (_, i) => `D${i + 1}`);
+                    const dataPoints = [];
+                    let val = 50000;
+                    for (let i = 0; i < 30; i++) {
+                        val = val + (Math.random() - 0.4) * 1200;
+                        dataPoints.push(val);
+                    }
+
+                    new Chart(ctxLine, {
+                        type: 'line',
+                        data: {
+                            labels,
+                            datasets: [{
+                                label: 'Net Equity', data: dataPoints,
+                                borderColor: '#A78BFA', backgroundColor: gradientLine,
+                                borderWidth: 3, fill: true, tension: 0.4,
+                                pointRadius: 0, pointHoverRadius: 6,
+                                pointHoverBackgroundColor: '#FFF',
+                                pointHoverBorderColor: '#A78BFA', pointHoverBorderWidth: 3
+                            }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: 'rgba(20, 20, 25, 0.9)',
+                                    titleFont: { family: 'Outfit', size: 13 },
+                                    bodyFont: { family: 'Outfit', size: 14, weight: 'bold' },
+                                    padding: 12, displayColors: false,
+                                    callbacks: { label: ctx => '$' + ctx.parsed.y.toLocaleString() }
+                                }
+                            },
+                            scales: {
+                                x: { display: false },
+                                y: {
+                                    grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
+                                    ticks: { callback: v => '$' + v / 1000 + 'k', padding: 10 }
+                                }
+                            },
+                            interaction: { mode: 'index', intersect: false }
+                        }
+                    });
+                }
+            }));
+        });
+    </script>
+</body>
+
+</html>

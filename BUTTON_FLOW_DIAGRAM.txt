@@ -1,0 +1,181 @@
+╔═══════════════════════════════════════════════════════════════╗
+║           INTERACTIVE TELEGRAM BOT - BUTTON FLOW              ║
+╚═══════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────┐
+│  USER TYPES: /menu                                          │
+└────────────┬────────────────────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────────────────────┐
+│  BOT SHOWS:                                                 │
+│  🤖 CRYPTO AGENT MENU                                       │
+│                                                             │
+│  [💼 Portfolio] [🔔 Alerts]                                 │
+│  [📊 Market]    [📰 News]                                   │
+│  [📔 Journal]   [🔍 Research]                               │
+│  [⚙️ Settings]  [❓ Help]                                   │
+└────────────┬────────────────────────────────────────────────┘
+             │
+             │ USER TAPS: [💼 Portfolio]
+             ▼
+┌─────────────────────────────────────────────────────────────┐
+│  BOT EDITS MESSAGE TO:                                      │
+│  💼 YOUR PORTFOLIO                                          │
+│                                                             │
+│  BTC 🟢                                                     │
+│  Qty: 0.5 • Avg: $95,000                                   │
+│  Now: $97,500 • Value: $48,750                             │
+│  P&L: +$1,250 (+2.6%)                                      │
+│                                                             │
+│  TOTAL VALUE: $48,750                                      │
+│                                                             │
+│  [📊 Analyze Risk] [🔄 Refresh]                            │
+│  [📈 Best Performer] [📉 Worst Performer]                  │
+│  [➕ Add Position] [💾 Export]                             │
+└────────────┬────────────────────────────────────────────────┘
+             │
+             │ USER TAPS: [📊 Analyze Risk]
+             ▼
+┌─────────────────────────────────────────────────────────────┐
+│  BOT EDITS MESSAGE TO:                                      │
+│  📊 PORTFOLIO RISK ANALYSIS                                 │
+│                                                             │
+│  Risk Level: MEDIUM ⚖️                                      │
+│  Diversification: 3 assets                                  │
+│  Volatility: 45% (30-day)                                  │
+│  Max Drawdown: -12%                                        │
+│                                                             │
+│  Recommendations:                                           │
+│  • Consider adding stablecoins                             │
+│  • BTC concentration is high (60%)                         │
+└─────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════
+
+ANOTHER EXAMPLE: /coin BTC
+
+┌─────────────────────────────────────────────────────────────┐
+│  USER TYPES: /coin BTC                                      │
+└────────────┬────────────────────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────────────────────┐
+│  BOT SHOWS:                                                 │
+│  🪙 BTC QUICK CARD                                          │
+│                                                             │
+│  Price: $67,500                                            │
+│  24h Change: +2.5% 🟢                                       │
+│                                                             │
+│  What would you like to do?                                │
+│                                                             │
+│  [📊 Full TA] [📰 News]                                     │
+│  [🔍 Research] [🔔 Set Alert]                               │
+│  [➕ Add to Portfolio]                                      │
+└────────────┬────────────────────────────────────────────────┘
+             │
+             │ USER TAPS: [📊 Full TA]
+             ▼
+┌─────────────────────────────────────────────────────────────┐
+│  BOT EDITS MESSAGE TO:                                      │
+│  📊 BTC TECHNICAL ANALYSIS (4h)                             │
+│                                                             │
+│  Price: $67,500                                            │
+│  RSI: 58 (Neutral)                                         │
+│  MACD: Bullish crossover                                   │
+│  Support: $65,000                                          │
+│  Resistance: $70,000                                       │
+│                                                             │
+│  Signal: BULLISH 🟢                                         │
+│  Confidence: 7/10                                          │
+└─────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════
+
+SETTINGS EXAMPLE: /settings
+
+┌─────────────────────────────────────────────────────────────┐
+│  USER TYPES: /settings                                      │
+└────────────┬────────────────────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────────────────────┐
+│  BOT SHOWS:                                                 │
+│  ⚙️ SETTINGS                                                │
+│  ━━━━━━━━━━━━━━                                            │
+│  Tap any setting to change it:                             │
+│                                                             │
+│  [🔔 Alert Sensitivity: Medium]                            │
+│  [📅 Briefing Time: 8:00 AM]                               │
+│  [🌙 Night Mode: ON (12am-7am)]                            │
+│  [📊 Scanner: Active]                                       │
+│  [💾 Auto-Backup: Weekly]                                   │
+└────────────┬────────────────────────────────────────────────┘
+             │
+             │ USER TAPS: [🔔 Alert Sensitivity: Medium]
+             ▼
+┌─────────────────────────────────────────────────────────────┐
+│  BOT SHOWS POPUP: "✅ Alert sensitivity set to high"       │
+│                                                             │
+│  BOT EDITS MESSAGE TO:                                      │
+│  ⚙️ SETTINGS                                                │
+│  ━━━━━━━━━━━━━━                                            │
+│  Tap any setting to change it:                             │
+│                                                             │
+│  [🔔 Alert Sensitivity: High] ← CHANGED!                   │
+│  [📅 Briefing Time: 8:00 AM]                               │
+│  [🌙 Night Mode: ON (12am-7am)]                            │
+│  [📊 Scanner: Active]                                       │
+│  [💾 Auto-Backup: Weekly]                                   │
+└─────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════
+
+KEY CONCEPTS:
+
+1. INLINE KEYBOARDS = Buttons that appear below messages
+2. CALLBACK QUERIES = When user taps a button
+3. EDIT MESSAGE = Update existing message instead of sending new one
+4. CALLBACK DATA = Hidden data sent when button is tapped
+   Example: "portfolio_risk" tells bot which action to perform
+
+═══════════════════════════════════════════════════════════════
+
+HOW THE CODE WORKS:
+
+1. keyboards.py creates the button layouts
+   Example: get_portfolio_actions_keyboard() returns:
+   [[Button("Analyze Risk"), Button("Refresh")],
+    [Button("Best"), Button("Worst")]]
+
+2. handlers.py sends message with keyboard:
+   await update.message.reply_text(
+       "Your portfolio...",
+       reply_markup=keyboards.get_portfolio_actions_keyboard()
+   )
+
+3. User taps button → Telegram sends callback query
+
+4. interactive_handlers.py catches it:
+   async def portfolio_callback_handler(update, context):
+       query = update.callback_query
+       if query.data == "portfolio_risk":
+           # Run risk analysis
+           # Edit message with results
+
+5. Bot edits the message with new content
+
+═══════════════════════════════════════════════════════════════
+
+BENEFITS:
+
+✅ Cleaner chat (no spam of commands)
+✅ Easier for users (tap instead of type)
+✅ Faster interactions
+✅ Professional look
+✅ Guided workflows
+
+═══════════════════════════════════════════════════════════════
