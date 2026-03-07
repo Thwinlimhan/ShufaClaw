@@ -23,12 +23,17 @@ _pool: Optional[asyncpg.Pool] = None
 
 
 def _get_db_url() -> str:
-    """Build database URL from environment variables or use defaults."""
+    """Build database URL from environment variables with production-safe guards."""
     host = os.getenv("DB_HOST", "localhost")
     port = os.getenv("DB_PORT", "5432")
     user = os.getenv("DB_USER", "shufaclaw")
-    password = os.getenv("DB_PASSWORD", "shufaclaw_dev_2024")
+    password = os.getenv("DB_PASSWORD", "")
     database = os.getenv("DB_NAME", "shufaclaw")
+
+    app_env = os.getenv("APP_ENV", "development").lower()
+    if app_env in {"prod", "production"} and not password:
+        raise RuntimeError("DB_PASSWORD must be set in production mode")
+
     return f"postgresql://{user}:{password}@{host}:{port}/{database}"
 
 
