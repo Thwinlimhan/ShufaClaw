@@ -14,6 +14,8 @@ from crypto_agent.bot import (
     frontier_handlers
 )
 from crypto_agent.core import agent, scheduler
+from crypto_agent.core.error_handling import RuntimeErrorContext, log_runtime_exception
+from crypto_agent.core.startup_policy import enforce_startup_fail_policy
 from crypto_agent.core.cognitive_loop import CognitiveLoop
 from crypto_agent.core.skill_system import SkillSystem
 from crypto_agent.core.orchestrator import orchestrator as core_orchestrator # Renamed to avoid conflict
@@ -68,28 +70,31 @@ def start_discord():
     return proc
 
 
+def start_secondary_services():
+    """Start optional sidecar services and log failures with subsystem context."""
+    try:
+        start_dashboard()
+    except (OSError, subprocess.SubprocessError) as exc:
+        log_runtime_exception(logger, exc, RuntimeErrorContext(subsystem="dashboard"))
 
-# --- DASHBOARD SETUP ---
+    try:
+        start_discord()
+    except (OSError, subprocess.SubprocessError) as exc:
+        log_runtime_exception(logger, exc, RuntimeErrorContext(subsystem="discord"))
 
 
-async def post_init(application):
-    """Called after bot starts to register database, commands and scheduler."""
-    # 0. Initialize V2 Infrastructure
+async def initialize_v2_infrastructure() -> bool:
+    """Initialize V2 infra and return True when all critical components are ready."""
     logger.info("Initializing V2 Infrastructure (TimescaleDB, Redis, Kafka)...")
     try:
         await create_tables()
         await redis_cache.connect()
         await event_bus.connect()
-        logger.info("✅ V2 Infrastructure ready!")
-        
-        # Start market data streams
+
         default_symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
         await market_streamer.start(default_symbols)
-        
-        # Power up the Agents
         intelligence_orchestrator.start()
 
-        # Wire risk event persistence + Kafka
         from crypto_agent.trading.risk_manager import risk_manager
         from crypto_agent.trading.risk_logger import persist_and_publish_risk_event
 
@@ -98,13 +103,37 @@ async def post_init(application):
                 loop = asyncio.get_running_loop()
                 loop.create_task(persist_and_publish_risk_event(event))
             except RuntimeError:
-                pass
+                logger.warning("Risk event dropped: no running asyncio loop available")
 
         risk_manager.set_event_handler(_on_risk_event)
-        
-    except Exception as e:
-        logger.warning(f"⚠️ V2 infrastructure not available: {e}")
-        logger.warning("   Bot will continue with V1 functionality.")
+        logger.info("✅ V2 Infrastructure ready!")
+        return True
+    except (ConnectionError, TimeoutError, OSError) as exc:
+        log_runtime_exception(
+            logger,
+            exc,
+            RuntimeErrorContext(subsystem="v2_infrastructure", critical=False),
+        )
+    except Exception as exc:
+        # Keep a broad fallback, but with structured logging + explicit policy below.
+        log_runtime_exception(
+            logger,
+            exc,
+            RuntimeErrorContext(subsystem="v2_infrastructure", critical=False),
+        )
+
+    logger.warning("⚠️ V2 infrastructure not available. Bot will continue with V1 functionality.")
+    return False
+
+
+
+# --- DASHBOARD SETUP ---
+
+
+async def post_init(application):
+    """Called after bot starts to register database, commands and scheduler."""
+    v2_ready = await initialize_v2_infrastructure()
+    enforce_startup_fail_policy(config.IS_PRODUCTION, v2_ready)
 
     # 0.1 Initialize V1 Database (SQLite — still used for chat history etc.)
     logger.info("Initializing V1 Database...")
@@ -224,17 +253,17 @@ async def post_init(application):
             chat_id=config.MY_TELEGRAM_ID, 
             text="[RESTART] Bot Refactored & Restarted! Everything is now running modularly."
         )
-    except Exception as e:
-        logger.error(f"Startup notification failed: {e}")
+    except Exception as exc:
+        log_runtime_exception(
+            logger,
+            exc,
+            RuntimeErrorContext(subsystem="startup_notification"),
+        )
 
 def start_bot():
     """Main entry point to start the whole system."""
     # 1. Start Dashboard & Discord in background
-    try:
-        start_dashboard()
-        start_discord()
-    except Exception as e:
-        logger.error(f"Failed to start secondary services: {e}")
+    start_secondary_services()
 
     # 3. Build Telegram App
     application = ApplicationBuilder().token(config.TELEGRAM_BOT_TOKEN).post_init(post_init).build()

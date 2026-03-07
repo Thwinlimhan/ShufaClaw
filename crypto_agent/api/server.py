@@ -16,6 +16,7 @@ import hashlib
 import hmac
 import secrets
 from enum import Enum
+from crypto_agent import config
 
 
 # ============================================================================
@@ -148,7 +149,7 @@ class APIServer:
         # CORS middleware
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=["*"],  # In production, specify allowed origins
+            allow_origins=config.CORS_ORIGINS,  # In production, specify allowed origins
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],

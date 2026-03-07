@@ -109,7 +109,8 @@ class SmartMoneyTracker:
             
         summary_text = "Notable On-Chain Activity this week:\n"
         for m in moves:
-            summary_text += f"- {m['timestamp']}: {m['details'].split('\\n')[0]}\n"
+            first_line = m['details'].splitlines()[0] if m.get('details') else 'No details provided'
+            summary_text += f"- {m['timestamp']}: {first_line}\n"
             
         return summary_text
 

@@ -31,7 +31,7 @@ app.include_router(monitoring_router)
 app.include_router(v2_data_router)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=config.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
