@@ -4,8 +4,9 @@ import logging
 import psutil
 import time
 import os
+import sqlite3
 from collections import deque
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, Request, BackgroundTasks, WebSocket, WebSocketDisconnect, Depends, Header, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
@@ -21,6 +22,13 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Crypto Agent Dashboard")
 
+# V2 API Routers
+from crypto_agent.api.features import router as features_router
+from crypto_agent.api.monitoring import router as monitoring_router
+from crypto_agent.api.v2_data import router as v2_data_router
+app.include_router(features_router)
+app.include_router(monitoring_router)
+app.include_router(v2_data_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -119,16 +127,16 @@ async def state_generator(request: Request):
                     "symbol": s,
                     "quantity": qty,
                     "avg_price": avg,
-                    "current_price": round(p_curr, 2),
-                    "value": round(value, 2),
-                    "change_24h": round(change, 2),
-                    "pnl": round(value - cost, 2)
+                    "current_price": round(p_curr, ndigits=2),
+                    "value": round(value, ndigits=2),
+                    "change_24h": round(change, ndigits=2),
+                    "pnl": round(value - cost, ndigits=2)
                 })
 
             # Calculate real 24h portfolio change
             portfolio_change = 0
             if total_cost > 0:
-                portfolio_change = round(((total_value - total_cost) / total_cost) * 100, 2)
+                portfolio_change = round(((total_value - total_cost) / total_cost) * 100, ndigits=2)
             
             # 3. Market
             fng = await prices.get_fear_greed_index()
@@ -183,13 +191,13 @@ async def state_generator(request: Request):
                 "scanner_findings": scanner_events,
                 "portfolio_items": portfolio_items,
                 "system": {
-                    "cpu": round(cpu_percent, 1),
-                    "memory": round(mem.percent, 1),
-                    "memory_used_gb": round(mem.used / (1024**3), 1),
-                    "memory_total_gb": round(mem.total / (1024**3), 1),
-                    "disk": round(disk.percent, 1),
-                    "disk_used_gb": round(disk.used / (1024**3), 1),
-                    "disk_total_gb": round(disk.total / (1024**3), 1),
+                    "cpu": round(cpu_percent, ndigits=1),
+                    "memory": round(mem.percent, ndigits=1),
+                    "memory_used_gb": round(mem.used / (1024**3), ndigits=1),
+                    "memory_total_gb": round(mem.total / (1024**3), ndigits=1),
+                    "disk": round(disk.percent, ndigits=1),
+                    "disk_used_gb": round(disk.used / (1024**3), ndigits=1),
+                    "disk_total_gb": round(disk.total / (1024**3), ndigits=1),
                     "uptime": uptime_str
                 }
             }
@@ -207,6 +215,18 @@ async def state_generator(request: Request):
 async def sse_endpoint(request: Request):
     """Endpoint for SSE updates"""
     return EventSourceResponse(state_generator(request))
+
+@app.get("/health")
+async def health():
+    """Health check endpoint for external monitoring"""
+    uptime_seconds = int(time.time() - start_time)
+    hours, remainder = divmod(uptime_seconds, 3600)
+    minutes, secs = divmod(remainder, 60)
+    return {
+        "status": "online",
+        "uptime": f"{hours}h {minutes}m {secs}s",
+        "timestamp": time.time()
+    }
 
 @app.get("/api/portfolio")
 async def get_portfolio():
@@ -231,12 +251,12 @@ async def get_portfolio():
             enriched.append({
                 "symbol": s,
                 "quantity": qty,
-                "avg_price": round(avg, 2),
-                "current_price": round(p_curr, 2),
-                "value": round(value, 2),
-                "change_24h": round(change, 2),
-                "pnl": round(value - cost, 2),
-                "pnl_percent": round(((p_curr - avg) / avg) * 100, 2) if avg > 0 else 0,
+                "avg_price": round(avg, ndigits=2),
+                "current_price": round(p_curr, ndigits=2),
+                "value": round(value, ndigits=2),
+                "change_24h": round(change, ndigits=2),
+                "pnl": round(value - cost, ndigits=2),
+                "pnl_percent": round(((p_curr - avg) / avg) * 100, ndigits=2) if avg > 0 else 0,
                 "notes": pos.get('notes', '')
             })
         return {"status": "success", "data": enriched}
@@ -272,7 +292,7 @@ async def add_journal():
     class JournalEntry(BaseModel):
         content: str
         entry_type: str = "reflection"
-        symbol: str = None
+        symbol: Optional[str] = None
     return {"status": "info", "message": "Use the model below"}
 
 # We need a separate model, so define at module level
@@ -281,7 +301,7 @@ from pydantic import BaseModel
 class JournalEntryModel(BaseModel):
     content: str
     entry_type: str = "reflection"
-    symbol: str = None
+    symbol: Optional[str] = None
 
 @app.post("/api/journal/create")
 async def create_journal_entry(entry: JournalEntryModel):
@@ -325,16 +345,16 @@ async def get_system_health():
         return {
             "status": "success",
             "data": {
-                "cpu": round(cpu_percent, 1),
+                "cpu": round(cpu_percent, ndigits=1),
                 "cpu_count": psutil.cpu_count(),
-                "memory_percent": round(mem.percent, 1),
-                "memory_used": round(mem.used / (1024**3), 2),
-                "memory_total": round(mem.total / (1024**3), 2),
-                "memory_available": round(mem.available / (1024**3), 2),
-                "disk_percent": round(disk.percent, 1),
-                "disk_used": round(disk.used / (1024**3), 2),
-                "disk_total": round(disk.total / (1024**3), 2),
-                "process_memory_mb": round(proc_mem.rss / (1024**2), 1),
+                "memory_percent": round(mem.percent, ndigits=1),
+                "memory_used": round(mem.used / (1024**3), ndigits=2),
+                "memory_total": round(mem.total / (1024**3), ndigits=2),
+                "memory_available": round(mem.available / (1024**3), ndigits=2),
+                "disk_percent": round(disk.percent, ndigits=1),
+                "disk_used": round(disk.used / (1024**3), ndigits=2),
+                "disk_total": round(disk.total / (1024**3), ndigits=2),
+                "process_memory_mb": round(proc_mem.rss / (1024**2), ndigits=1),
                 "uptime": f"{hours}h {minutes}m {secs}s",
                 "uptime_seconds": uptime_seconds
             }
@@ -442,8 +462,8 @@ async def get_tokens_stats():
 
 @app.post("/api/chat")
 async def process_chat(req: ChatMessage):
-    """Process Neural Chat messages with real LLM"""
-    from crypto_agent.intelligence import analyst
+    """Process Neural Chat messages with real LLM sync logic"""
+    import crypto_agent.intelligence.analyst as analyst
     try:
         messages = [{"role": "user", "content": req.message}]
         response = await analyst.get_ai_response(messages, feature_name="dashboard_chat")
@@ -604,6 +624,19 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 # Serve standard HTML
 html_path = Path(__file__).parent / "index.html"
 
+
+@app.on_event("startup")
+async def _startup_v2_infra_best_effort():
+    """
+    Best-effort V2 initialization so the dashboard API works when started standalone.
+    The Telegram bot also initializes V2 infra in `crypto_agent.main.post_init`.
+    """
+    try:
+        from crypto_agent.infrastructure.database import create_tables
+        await create_tables()
+    except Exception as e:
+        logger.warning(f"V2 DB init skipped/unavailable: {e}")
+
 @app.get("/")
 async def serve_dashboard():
     """Serve the single page application"""
@@ -614,4 +647,4 @@ async def serve_dashboard():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -2,7 +2,7 @@ import logging
 import math
 import statistics
 import datetime
-import aiohttp
+from crypto_agent.core import network
 from crypto_agent.data.technical import (
     calculate_rsi, calculate_sma, calculate_bollinger_bands, calculate_macd
 )
@@ -21,14 +21,9 @@ async def fetch_historical_klines(symbol, interval, start_time_ms=None, end_time
     if end_time_ms:
         url += f"&endTime={end_time_ms}"
         
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(url, timeout=15) as response:
-                if response.status == 200:
-                    return await response.json()
-        except Exception as e:
-            logger.error(f"Error fetching historical klines: {e}")
-    return []
+    # Use centralized system_safe_fetch to avoid DNS issues on Windows
+    data = await network.system_safe_fetch(url)
+    return data if data else []
 
 class Backtester:
     def __init__(self, initial_capital=10000.0, slippage_pct=0.001):
@@ -51,8 +46,10 @@ class Backtester:
         equity_curve = [initial]
         peak = initial
         drawdowns = []
+        returns = []
         for t in trades:
             curr = equity_curve[-1] + t['pnl']
+            returns.append(t['pnl_pct'])
             equity_curve.append(curr)
             if curr > peak:
                 peak = curr
@@ -60,6 +57,19 @@ class Backtester:
             drawdowns.append(dd)
             
         max_drawdown = max(drawdowns) if drawdowns else 0
+        
+        # Risk adjusted metrics (Approximations per-trade rather than time-series)
+        trade_sharpe = 0
+        trade_sortino = 0
+        if len(returns) > 1:
+            mean_ret = statistics.mean(returns)
+            std_ret = statistics.stdev(returns) if statistics.stdev(returns) > 0 else 1
+            # Assuming ~100 trades a year as annualization factor for simplistic sharpe
+            trade_sharpe = (mean_ret / std_ret) * math.sqrt(min(len(returns), 100))
+            
+            downside_returns = [r for r in returns if r < 0]
+            downside_std = statistics.stdev(downside_returns) if len(downside_returns) > 1 and statistics.stdev(downside_returns) > 0 else 1
+            trade_sortino = (mean_ret / downside_std) * math.sqrt(min(len(returns), 100))
         
         return {
             'total_return_pct': total_return * 100,
@@ -69,6 +79,8 @@ class Backtester:
             'avg_loss_pct': avg_loss * 100,
             'profit_factor': profit_factor,
             'max_drawdown_pct': max_drawdown * 100,
+            'sharpe_ratio': trade_sharpe,
+            'sortino_ratio': trade_sortino,
             'final_capital': capital,
             'equity_curve': equity_curve
         }
@@ -188,10 +200,13 @@ def format_backtest_report(symbol, strategy, timeframe, start_date, metrics):
     msg += f"Initial Capital: $10,000.00\n"
     msg += f"Final Capital: **${metrics['final_capital']:,.2f}**\n"
     sign = "+" if metrics['total_return_pct'] > 0 else ""
-    msg += f"Total Return: **{sign}{metrics['total_return_pct']:.2f}%**\n\n"
+    msg += f"Total Return: **{sign}{metrics['total_return_pct']:.2f}%**\n"
+    msg += f"Sharpe Ratio: **{metrics.get('sharpe_ratio', 0):.2f}** | Sortino: **{metrics.get('sortino_ratio', 0):.2f}**\n\n"
     
     msg += f"📈 **TRADE STATISTICS**\n"
     msg += f"Total Trades: {metrics['total_trades']}\n"
+    if metrics['total_trades'] < 30:
+        msg += f"⚠️ *Warning: Low trade count (<30) indicates high risk of statistical noise/overfitting.*\n"
     msg += f"Win Rate: **{metrics['win_rate_pct']:.1f}%**\n"
     msg += f"Avg Win: +{metrics['avg_win_pct']:.2f}% | Avg Loss: {metrics['avg_loss_pct']:.2f}%\n"
     msg += f"Profit Factor: {metrics['profit_factor']:.2f}\n"

@@ -38,3 +38,10 @@ fastapi
 sse-starlette
 uvicorn
 discord.py
+
+# V2 Infrastructure
+asyncpg==0.31.0
+redis==7.2.1
+aiokafka==0.13.0
+pydantic>=2.0.0
+ccxt>=4.0.0

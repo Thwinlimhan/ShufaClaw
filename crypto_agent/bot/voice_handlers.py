@@ -11,7 +11,7 @@ from crypto_agent.bot import middleware
 from crypto_agent.intelligence.analyst import get_ai_response
 from crypto_agent.storage import database
 from crypto_agent.core.context_builder import build_full_context
-from crypto_agent.core.agent import BASE_SYSTEM_PROMPT
+from crypto_agent.core import prompts
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,7 @@ async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYP
     history = database.get_last_n_messages(10)
     context_data = await build_full_context()
     
-    prompt = f"{BASE_SYSTEM_PROMPT}\n\nThe user spoke to you. Give a helpful but conversational and concise answer.\n\nContext:\n{context_data}"
+    prompt = f"{prompts.get_system_prompt('default')}\n\nThe user spoke to you. Give a helpful but conversational and concise answer.\n\nContext:\n{context_data}"
     ai_payload = [{"role": "system", "content": prompt}] + history + [{"role": "user", "content": transcription}]
     
     ai_response = await get_ai_response(ai_payload)

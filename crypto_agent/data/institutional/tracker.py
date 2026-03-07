@@ -1,7 +1,6 @@
-import logging
-import aiohttp
 from typing import Dict, List, Optional
 import json
+from crypto_agent.core import network
 
 logger = logging.getLogger(__name__)
 
@@ -17,22 +16,18 @@ async def get_grayscale_holdings() -> Dict:
     url_eth = "https://api.coingecko.com/api/v3/companies/public_treasury/ethereum"
     
     try:
-        async with aiohttp.ClientSession() as session:
-            # BTC
-            async with session.get(url_btc, timeout=10) as resp:
-                if resp.status == 200:
-                    data_btc = await resp.json()
-                    companies_btc = data_btc.get('companies', [])
-                else:
-                    companies_btc = []
-                    
-            # ETH
-            async with session.get(url_eth, timeout=10) as resp:
-                if resp.status == 200:
-                    data_eth = await resp.json()
-                    companies_eth = data_eth.get('companies', [])
-                else:
-                    companies_eth = []
+        # Fetch BTC and ETH simultaneously using system DNS safe fetch
+        results = await asyncio.gather(
+            network.system_safe_fetch(url_btc, timeout=10),
+            network.system_safe_fetch(url_eth, timeout=10)
+        )
+        
+        companies_btc = results[0].get('companies', []) if results[0] else []
+        companies_eth = results[1].get('companies', []) if results[1] else []
+        
+        # Capture the data objects for the summary stats at the end
+        data_btc = results[0] if results[0] else {}
+        data_eth = results[1] if results[1] else {}
                     
         # Extract top holders (MicroStrategy, Grayscale, etc.)
         top_btc = []
@@ -78,28 +73,27 @@ async def get_cot_report_proxy() -> Dict:
     dvol_url = "https://www.deribit.com/api/v2/public/get_volatility_index_data?currency=BTC&resolution=86400"
     
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(dvol_url, timeout=10) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    points = data.get('result', {}).get('data', [])
-                    if len(points) >= 2:
-                        current_dvol = points[-1][-1]
-                        prev_dvol = points[-2][-1]
-                        
-                        trend = "Rising" if current_dvol > prev_dvol else "Falling"
-                        
-                        # Interpretation
-                        if current_dvol > 75: sentiment = "Institutional Hedging (Fear)"
-                        elif current_dvol < 45: sentiment = "Institutional Complacency (Greed)"
-                        else: sentiment = "Neutral Institutional Stance"
-                        
-                        return {
-                            "status": "success",
-                            "dvol_index": current_dvol,
-                            "trend": trend,
-                            "sentiment": sentiment
-                        }
+        # Fetch Deribit DVOL using system safe fetch
+        data = await network.system_safe_fetch(dvol_url, timeout=10)
+        if data and data.get('result', {}).get('data'):
+            points = data['result']['data']
+            if len(points) >= 2:
+                current_dvol = points[-1][-1]
+                prev_dvol = points[-2][-1]
+                
+                trend = "Rising" if current_dvol > prev_dvol else "Falling"
+                
+                # Interpretation
+                if current_dvol > 75: sentiment = "Institutional Hedging (Fear)"
+                elif current_dvol < 45: sentiment = "Institutional Complacency (Greed)"
+                else: sentiment = "Neutral Institutional Stance"
+                
+                return {
+                    "status": "success",
+                    "dvol_index": current_dvol,
+                    "trend": trend,
+                    "sentiment": sentiment
+                }
     except Exception as e:
         logger.error(f"Error fetching institutional derivatives (DVOL): {e}")
 

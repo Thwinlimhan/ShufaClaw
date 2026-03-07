@@ -2,19 +2,10 @@ import aiohttp
 import logging
 import asyncio
 import statistics
-from crypto_agent.core import error_handler
+from crypto_agent.core import error_handler, network
 from crypto_agent.intelligence.analyst import get_ai_response
 
 logger = logging.getLogger(__name__)
-
-async def _fetch_url(session, url):
-    async with session.get(url, timeout=15) as response:
-        if response.status == 200:
-            return await response.json()
-        elif response.status == 429:
-            raise error_handler.RateLimitError("Binance rate limited")
-        else:
-            raise error_handler.APIError(f"Binance returned status {response.status}")
 
 async def fetch_klines(symbol, interval='4h', limit=200):
     symbol = symbol.upper()
@@ -23,9 +14,11 @@ async def fetch_klines(symbol, interval='4h', limit=200):
     
     url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
     
-    async with aiohttp.ClientSession() as session:
-        data = await error_handler.safe_api_call(_fetch_url, session, url)
-        return data if data else []
+    # Use centralized robust_fetch with system_safe_fetch to bypass DNS issues
+    data = await error_handler.safe_api_call(
+        network.robust_fetch, 'binance', network.system_safe_fetch, url
+    )
+    return data if data else []
 
 # --- CORE CALCULATIONS ---
 
@@ -172,6 +165,34 @@ def get_swing_levels(highs, lows):
         if highs[i] == max(highs[i-2:i+3]): resistances.append(highs[i])
         if lows[i] == min(lows[i-2:i+3]): supports.append(lows[i])
     return sorted(list(set(supports))), sorted(list(set(resistances)))
+
+def calculate_realized_volatility(closes, period=20):
+    """20-period rolling standard deviation of percentage returns."""
+    if len(closes) < period + 1: return None
+    returns = [(closes[i] - closes[i-1]) / closes[i-1] for i in range(1, len(closes))]
+    if len(returns) < period: return None
+    recent_returns = returns[-period:]
+    return statistics.stdev(recent_returns)
+
+def calculate_volume_delta(buy_volume, sell_volume):
+    """Difference between buy volume and sell volume."""
+    return buy_volume - sell_volume
+
+def calculate_ob_imbalance(bids, asks):
+    """Ratio of bid depth to total depth. >0.5 is bid-heavy, <0.5 is ask-heavy."""
+    bid_depth = sum(qty for price, qty in bids)
+    ask_depth = sum(qty for price, qty in asks)
+    total = bid_depth + ask_depth
+    if total == 0: return 0.5
+    return bid_depth / total
+
+def calculate_zscore(current_value, historical_values):
+    """Standard z-score (value - mean) / std_dev."""
+    if len(historical_values) < 2: return 0
+    mean = sum(historical_values) / len(historical_values)
+    std_dev = statistics.stdev(historical_values)
+    if std_dev == 0: return 0
+    return (current_value - mean) / std_dev
 
 # --- WRAPPER FUNCTION ---
 

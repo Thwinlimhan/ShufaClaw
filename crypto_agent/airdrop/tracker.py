@@ -88,6 +88,7 @@ class AirdropTracker:
                 alert_sent INTEGER DEFAULT 0,
                 notes TEXT DEFAULT ''
             )
+        """)
         conn.commit()
         conn.close()
         self.load_protocols()

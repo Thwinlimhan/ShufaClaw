@@ -1,7 +1,7 @@
 import logging
 from telegram import Update
 from telegram.ext import ContextTypes
-from crypto_agent.intelligence.intelligence_hub import IntelligenceHub, format_unified_recommendation
+from crypto_agent.intelligence.hub import IntelligenceHub, format_unified_recommendation
 
 logger = logging.getLogger(__name__)
 

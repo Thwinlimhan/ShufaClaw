@@ -1,7 +1,7 @@
-import aiohttp
 import asyncio
 import logging
 from datetime import datetime
+from crypto_agent.core import network
 
 # TIER 6: Cross-Market Arbitrage Intelligence
 # This module identifies mispricings and premiums across different venues.
@@ -16,68 +16,72 @@ class ArbitrageScanner:
     async def get_futures_basis(self, symbol="BTC"):
         """SCANNER 1: FUTURES BASIS TRACKER (Spot vs Perp)"""
         try:
-            async with aiohttp.ClientSession() as session:
-                # Fetch Spot and Perp simultaneously
-                async with session.get(f"{self.binance_spot}?symbol={symbol}USDT") as r1, \
-                           session.get(f"{self.binance_perp}?symbol={symbol}USDT") as r2:
-                    
-                    spot_price = float((await r1.json())['price'])
-                    perp_price = float((await r2.json())['price'])
-                    
-                    basis = perp_price - spot_price
-                    basis_pct = (basis / spot_price) * 100
-                    
-                    return {
-                        "symbol": symbol,
-                        "spot": spot_price,
-                        "perp": perp_price,
-                        "basis_usd": round(basis, 2),
-                        "basis_pct": round(basis_pct, 4),
-                        "sentiment": "Contango (Bullish)" if basis > 0 else "Backwardation (Bearish)"
-                    }
+            # Fetch Spot and Perp simultaneously using system_safe_fetch to avoid DNS issues
+            results = await asyncio.gather(
+                network.system_safe_fetch(f"{self.binance_spot}?symbol={symbol}USDT"),
+                network.system_safe_fetch(f"{self.binance_perp}?symbol={symbol}USDT")
+            )
+            
+            if results[0] and results[1]:
+                spot_price = float(results[0]['price'])
+                perp_price = float(results[1]['price'])
+                
+                basis = perp_price - spot_price
+                basis_pct = (basis / spot_price) * 100
+                
+                return {
+                    "symbol": symbol,
+                    "spot": spot_price,
+                    "perp": perp_price,
+                    "basis_usd": round(basis, 2),
+                    "basis_pct": round(basis_pct, 4),
+                    "sentiment": "Contango (Bullish)" if basis > 0 else "Backwardation (Bearish)"
+                }
         except Exception as e:
             logging.error(f"Basis Error: {e}")
-            return {"status": "Error", "message": "Could not calculate basis"}
+        return {"status": "Error", "message": "Could not calculate basis"}
 
     async def get_exchange_premium(self, symbol="BTC"):
         """SCANNER 2: CROSS-EXCHANGE PREMIUM (Coinbase vs Binance)"""
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f"{self.binance_spot}?symbol={symbol}USDT") as r1, \
-                           session.get(f"{self.coinbase_url}/{symbol}-USD/spot") as r2:
-                    
-                    binance_price = float((await r1.json())['price'])
-                    coinbase_price = float((await r2.json())['data']['amount'])
-                    
-                    premium = coinbase_price - binance_price
-                    premium_pct = (premium / binance_price) * 100
-                    
-                    return {
-                        "symbol": symbol,
-                        "binance": binance_price,
-                        "coinbase": coinbase_price,
-                        "premium_usd": round(premium, 2),
-                        "premium_pct": round(premium_pct, 4),
-                        "interpretation": "US Institutional Buying" if premium_pct > 0.05 else "Neutral"
-                    }
+            # Fetch Binance Spot and Coinbase Spot simultaneously
+            results = await asyncio.gather(
+                network.system_safe_fetch(f"{self.binance_spot}?symbol={symbol}USDT"),
+                network.system_safe_fetch(f"{self.coinbase_url}/{symbol}-USD/spot")
+            )
+            
+            if results[0] and results[1]:
+                binance_price = float(results[0]['price'])
+                coinbase_price = float(results[1]['data']['amount'])
+                
+                premium = coinbase_price - binance_price
+                premium_pct = (premium / binance_price) * 100
+                
+                return {
+                    "symbol": symbol,
+                    "binance": binance_price,
+                    "coinbase": coinbase_price,
+                    "premium_usd": round(premium, 2),
+                    "premium_pct": round(premium_pct, 4),
+                    "interpretation": "US Institutional Buying" if premium_pct > 0.05 else "Neutral"
+                }
         except Exception as e:
             logging.error(f"Premium Error: {e}")
-            return {"status": "Error", "message": "Could not calculate premium"}
+        return {"status": "Error", "message": "Could not calculate premium"}
 
     async def monitor_stablecoin_pegs(self):
         """SCANNER 4: STABLECOIN PEG MONITOR (USDT/USDC)"""
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f"{self.binance_spot}?symbol=USDTUSDC") as r:
-                    if r.status == 200:
-                        price = float((await r.json())['price'])
-                        depeg_detected = abs(1.0 - price) > 0.003
-                        return {
-                            "pair": "USDT/USDC",
-                            "price": price,
-                            "status": "DANGER: DEPEG" if depeg_detected else "Stable",
-                            "timestamp": datetime.now().isoformat()
-                        }
+            data = await network.system_safe_fetch(f"{self.binance_spot}?symbol=USDTUSDC")
+            if data:
+                price = float(data['price'])
+                depeg_detected = abs(1.0 - price) > 0.003
+                return {
+                    "pair": "USDT/USDC",
+                    "price": price,
+                    "status": "DANGER: DEPEG" if depeg_detected else "Stable",
+                    "timestamp": datetime.now().isoformat()
+                }
         except Exception as e:
             logging.error(f"Peg Monitor Error: {e}")
         return {"pair": "USDT/USDC", "status": "Error", "price": 1.0}

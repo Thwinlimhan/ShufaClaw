@@ -74,6 +74,25 @@ pip install -r requirements.txt
 python main.py
 ```
 
+### 4. V2 Infrastructure (Optional — for full quant stack)
+The V2 architecture uses TimescaleDB, Redis, and Kafka. Start them with Docker:
+
+```powershell
+docker-compose up -d
+# Wait ~30 seconds for services to be ready
+py test_v2_infra.py   # Verify connectivity
+```
+
+Then run the bot — it will auto-initialize V2 tables and market streams.
+
+### 5. V2 Web Dashboard (React)
+```powershell
+cd v2_frontend
+npm install
+npm run dev
+```
+Open http://localhost:5173. The dashboard proxies API calls to the FastAPI backend (port 8000).
+
 ---
 
 ## 📬 Communications

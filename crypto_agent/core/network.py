@@ -8,6 +8,10 @@ import asyncio
 import time
 from enum import Enum
 from functools import wraps
+import urllib.request
+import urllib.error
+import ssl
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -116,3 +120,39 @@ async def robust_fetch(service_name, fetch_func, *args, **kwargs):
         logger.error(f"Error in robust_fetch for {service_name}: {e}")
         breaker.record_failure()
         return None
+
+def _fetch_url_sync(url, timeout=15):
+    """
+    Fetches JSON from a URL using urllib (works better with system DNS on Windows).
+    This is less likely to have DNS resolution issues than aiohttp on some setups.
+    """
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'ShufaClaw/1.0'})
+        ctx = ssl.create_default_context()
+        # On some Windows systems, default SSL context might have issues with Binance, 
+        # so we ensure it's a standard secure context.
+        with urllib.request.urlopen(req, timeout=timeout, context=ctx) as response:
+            if response.status == 200:
+                return json.loads(response.read().decode())
+            elif response.status == 429:
+                logger.warning(f"Rate limited (429): {url}")
+                return None
+            else:
+                logger.warning(f"API returned status {response.status} for {url}")
+                return None
+    except urllib.error.HTTPError as e:
+        if e.code == 429:
+            logger.warning(f"Rate limited (HTTPError 429): {url}")
+        else:
+            logger.warning(f"HTTP error {e.code} for {url}")
+        return None
+    except Exception as e:
+        logger.warning(f"Fetch failed for {url}: {e}")
+        return None
+
+async def system_safe_fetch(url, timeout=15):
+    """
+    Wraps the synchronous urllib fetch in a thread so it doesn't block the async loop.
+    Use this for simple GET requests that are hitting DNS errors.
+    """
+    return await asyncio.to_thread(_fetch_url_sync, url, timeout)

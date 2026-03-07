@@ -35,6 +35,38 @@ AI_MODEL = os.getenv("AI_MODEL", "google/gemini-3.1-flash-lite-preview")
 MAX_HISTORY = 20
 TIMEZONE_OFFSET = "+06:30"
 
+# --- V2 Infrastructure Settings ---
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_USER = os.getenv("DB_USER", "shufaclaw")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "shufaclaw_dev_2024")
+DB_NAME = os.getenv("DB_NAME", "shufaclaw")
+
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = os.getenv("REDIS_PORT", "6379")
+
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+
+# --- Risk Limits (from env, safe defaults) ---
+def _float_env(key: str, default: float) -> float:
+    try:
+        return float(os.getenv(key, str(default)))
+    except ValueError:
+        return default
+
+def _int_env(key: str, default: int) -> int:
+    try:
+        return int(os.getenv(key, str(default)))
+    except ValueError:
+        return default
+
+RISK_MAX_DRAWDOWN = _float_env("RISK_MAX_DRAWDOWN", 0.15)
+RISK_MAX_DAILY_LOSS = _float_env("RISK_MAX_DAILY_LOSS", 0.03)
+RISK_MAX_SINGLE_EXPOSURE = _float_env("RISK_MAX_SINGLE_EXPOSURE", 0.25)
+RISK_MAX_LEVERAGE = _float_env("RISK_MAX_LEVERAGE", 3.0)
+RISK_MAX_PER_TRADE = _float_env("RISK_MAX_PER_TRADE", 0.01)
+RISK_MAX_POSITIONS = _int_env("RISK_MAX_POSITIONS", 20)
+
 # --- Validation ---
 if not TELEGRAM_BOT_TOKEN:
     print("WARNING: TELEGRAM_BOT_TOKEN is missing in .env file!")

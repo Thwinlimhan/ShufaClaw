@@ -1,7 +1,5 @@
 import logging
-import threading
 import asyncio
-from flask import Flask, jsonify
 
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ConversationHandler
 from crypto_agent import config
@@ -18,13 +16,19 @@ from crypto_agent.bot import (
 from crypto_agent.core import agent, scheduler
 from crypto_agent.core.cognitive_loop import CognitiveLoop
 from crypto_agent.core.skill_system import SkillSystem
-from crypto_agent.core.orchestrator import orchestrator
+from crypto_agent.core.orchestrator import orchestrator as core_orchestrator # Renamed to avoid conflict
 from crypto_agent.core.evolution_engine import EvolutionEngine
 from crypto_agent.core.workflow_engine import WorkflowEngine
+from crypto_agent.intelligence.hub import IntelligenceHub
 from crypto_agent.intelligence.event_predictor import EventPredictor
-from crypto_agent.data import market as market_service
-from crypto_agent.data import prices as price_service
+from crypto_agent.intelligence.orchestrator import orchestrator as intelligence_orchestrator # Added new import
+from crypto_agent.data import market as market_service, prices as price_service # Modified import
 import pytz
+from crypto_agent.infrastructure.database import create_tables, close_pool as close_db_pool
+from crypto_agent.infrastructure.cache import redis_cache
+from crypto_agent.infrastructure.event_bus import event_bus
+from crypto_agent.data.market_streamer import market_streamer
+
 
 # --- LOGGING SETUP ---
 logging.basicConfig(
@@ -38,44 +42,73 @@ import os
 import sys
 
 def start_dashboard():
-    logger.info("Starting Web Dashboard on port 5000...")
-    # Project root is the parent of the folder containing this file
+    logger.info("Starting Web Dashboard on port 8000...")
     cwd = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    subprocess.Popen([sys.executable, "-m", "uvicorn", "crypto_agent.dashboard.app:app", "--host", "0.0.0.0", "--port", "5000"], cwd=cwd)
+    log_file = open("dashboard.log", "w")
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "crypto_agent.dashboard.app:app", "--host", "0.0.0.0", "--port", "8000"],
+        stdout=log_file,
+        stderr=log_file,
+        cwd=cwd
+    )
+    logger.info(f"Dashboard started (PID: {proc.pid}). Logs: dashboard.log")
+    return proc
 
 def start_discord():
     logger.info("Starting Discord Agent...")
     cwd = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    subprocess.Popen([sys.executable, "-m", "crypto_agent.discord_agent.bot"], cwd=cwd)
+    log_file = open("discord_bot.log", "w")
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "crypto_agent.discord_agent.bot"],
+        stdout=log_file,
+        stderr=log_file,
+        cwd=cwd
+    )
+    logger.info(f"Discord bot started (PID: {proc.pid}). Logs: discord_bot.log")
+    return proc
 
 
 
-# --- FLASK APP FOR HEALTH CHECKS ---
-flask_app = Flask(__name__)
-
-@flask_app.route('/')
-def home():
-    return "Bot is running"
-
-@flask_app.route('/health')
-def health():
-    from datetime import datetime
-    uptime = datetime.now() - middleware.BOT_START_TIME
-    m = middleware.metrics
-    return jsonify({
-        "status": "online",
-        "uptime": str(uptime).split('.')[0],
-        "messages": m['messages_processed'],
-        "errors": m['errors_occurred'],
-        "api_success_rate": f"{((m['api_calls_total'] - m['api_calls_failed']) / m['api_calls_total'] * 100 if m['api_calls_total'] > 0 else 100):.1f}%"
-    })
-
-def run_flask():
-    flask_app.run(host='0.0.0.0', port=8081)
+# --- DASHBOARD SETUP ---
 
 
 async def post_init(application):
-    """Called after bot starts to register commands and scheduler."""
+    """Called after bot starts to register database, commands and scheduler."""
+    # 0. Initialize V2 Infrastructure
+    logger.info("Initializing V2 Infrastructure (TimescaleDB, Redis, Kafka)...")
+    try:
+        await create_tables()
+        await redis_cache.connect()
+        await event_bus.connect()
+        logger.info("✅ V2 Infrastructure ready!")
+        
+        # Start market data streams
+        default_symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
+        await market_streamer.start(default_symbols)
+        
+        # Power up the Agents
+        intelligence_orchestrator.start()
+
+        # Wire risk event persistence + Kafka
+        from crypto_agent.trading.risk_manager import risk_manager
+        from crypto_agent.trading.risk_logger import persist_and_publish_risk_event
+
+        def _on_risk_event(event):
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(persist_and_publish_risk_event(event))
+            except RuntimeError:
+                pass
+
+        risk_manager.set_event_handler(_on_risk_event)
+        
+    except Exception as e:
+        logger.warning(f"⚠️ V2 infrastructure not available: {e}")
+        logger.warning("   Bot will continue with V1 functionality.")
+
+    # 0.1 Initialize V1 Database (SQLite — still used for chat history etc.)
+    logger.info("Initializing V1 Database...")
+    await database.init_db()
     # 1. Initialize Intelligence Services
     logger.info("Initializing Intelligence services...")
     event_predictor = EventPredictor(database, market_service, price_service)
@@ -86,7 +119,7 @@ async def post_init(application):
     application.bot_data['event_predictor'] = event_predictor
     application.bot_data['skill_system'] = skill_system
     application.bot_data['evolution_engine'] = evolution_engine
-    application.bot_data['intelligence_hub'] = hub_handlers.IntelligenceHub({
+    application.bot_data['intelligence_hub'] = IntelligenceHub({
         'event_predictor': event_predictor,
         'market_service': market_service,
         'price_service': price_service,
@@ -196,32 +229,13 @@ async def post_init(application):
 
 def start_bot():
     """Main entry point to start the whole system."""
-    # 1. Initialize Database (all tables)
-    asyncio.run(database.init_db())
-
-    # 2. Initialize Living Agent Components
-    skills_sys = SkillSystem()
-    cog_loop = CognitiveLoop()
-    evolution = EvolutionEngine()
-    workflows = WorkflowEngine()
-    
-    # Log initialization success (Part 8 requirement)
-    skill_count = len(skills_sys.skills)
-    belief_count = len(cog_loop.beliefs)
-    logger.info(f"Agent initialized. Skills: {skill_count}. Memory: Loaded. Beliefs: {belief_count}. Ready.")
-    
-    # 3. Start Flask in background
-    t = threading.Thread(target=run_flask, daemon=True)
-    t.start()
-    
-    # 4. Start Dashboard & Discord in background
+    # 1. Start Dashboard & Discord in background
     try:
         start_dashboard()
         start_discord()
     except Exception as e:
         logger.error(f"Failed to start secondary services: {e}")
 
-    
     # 3. Build Telegram App
     application = ApplicationBuilder().token(config.TELEGRAM_BOT_TOKEN).post_init(post_init).build()
     
@@ -467,8 +481,8 @@ def start_bot():
     # Callbacks
     application.add_handler(CallbackQueryHandler(handlers.help_button_handler, pattern="^help_"))
     
-    # Message Handler (AI)
-    application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), agent.handle_message))
+    # Message Handler (AI Orchestrator)
+    application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), core_orchestrator.route_message))
     
     # 5. Run Polling
     print("--- (^) ShufaClaw Bot is starting! ---")

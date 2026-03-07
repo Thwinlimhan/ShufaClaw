@@ -9,6 +9,7 @@ import json
 
 from crypto_agent.storage import database, workflow_db
 from crypto_agent.data import prices as price_service, market as market_service
+from crypto_agent.data import technical as tech
 
 logger = logging.getLogger(__name__)
 
@@ -452,6 +453,22 @@ class MarketOrchestrator:
         
         return report
     
+    async def route_message(self, update, context):
+        """Routes incoming messages through the orchestrator to the agent."""
+        from crypto_agent.core.agent import handle_message
+        
+        # Add regime and mode context to the message handling process
+        # (The agent will fetch this via prompts/context_builder)
+        
+        # Determine if we should respond based on priority (if applicable to messages)
+        # For direct user messages, we usually always respond unless it's a critical-only mode
+        if not self.should_send_notification(Priority.MEDIUM):
+             # You might still want to reply if it's a direct message, 
+             # but here we follow the orchestrator's rules.
+             pass
+
+        return await handle_message(update, context)
+    
     def get_orchestrator_status(self) -> str:
         """Generate orchestrator status report."""
         report = "🧠 **ORCHESTRATOR STATUS**\n\n"
@@ -501,36 +518,107 @@ class MarketOrchestrator:
     
     async def _calculate_sma(self, symbol: str, days: int) -> Optional[float]:
         """Calculate Simple Moving Average."""
-        # Placeholder - would fetch historical prices and calculate
-        # For now, return a mock value
-        price, _ = await price_service.get_price(symbol)
-        if price:
-            return price * 0.95  # Mock: 5% below current
-        return None
+        try:
+            klines = await tech.fetch_klines(symbol, interval="1d", limit=max(days + 5, 60))
+            if not klines or len(klines) < days:
+                return None
+            closes = [float(k[4]) for k in klines]
+            sma = tech.calculate_sma(closes, days)
+            return float(sma) if sma is not None else None
+        except Exception as e:
+            logger.error(f"SMA calc failed for {symbol}: {e}")
+            return None
     
     async def _count_consecutive_days(self, symbol: str) -> int:
         """Count consecutive green or red days (positive = green, negative = red)."""
-        # Placeholder - would fetch daily candles and count
-        # For now, return a mock value
-        return 2  # Mock: 2 consecutive green days
+        try:
+            klines = await tech.fetch_klines(symbol, interval="1d", limit=60)
+            if not klines or len(klines) < 3:
+                return 0
+
+            # Binance kline: [open_time, open, high, low, close, ...]
+            candles = [(float(k[1]), float(k[4])) for k in klines]
+
+            count = 0
+            # walk backwards from most recent closed candle
+            for o, c in reversed(candles):
+                if o == 0:
+                    break
+                is_green = c > o
+                is_red = c < o
+                if count == 0:
+                    if is_green:
+                        count = 1
+                    elif is_red:
+                        count = -1
+                    else:
+                        break
+                else:
+                    if count > 0 and is_green:
+                        count += 1
+                    elif count < 0 and is_red:
+                        count -= 1
+                    else:
+                        break
+            return count
+        except Exception as e:
+            logger.error(f"Consecutive-days calc failed for {symbol}: {e}")
+            return 0
     
     async def _calculate_atr(self, symbol: str, days: int) -> Optional[float]:
         """Calculate Average True Range."""
-        # Placeholder - would fetch historical data and calculate ATR
-        # For now, return a mock value
-        return 1500.0  # Mock ATR value
+        try:
+            period = max(1, days)
+            klines = await tech.fetch_klines(symbol, interval="1d", limit=max(period + 50, 120))
+            if not klines or len(klines) < period + 2:
+                return None
+            atr = tech.calculate_atr(klines, period=period)
+            return float(atr) if atr is not None else None
+        except Exception as e:
+            logger.error(f"ATR calc failed for {symbol}: {e}")
+            return None
     
     async def _count_large_swings(self, symbol: str, days: int, threshold: float) -> int:
         """Count number of days with price swings above threshold."""
-        # Placeholder - would fetch daily data and count swings
-        # For now, return a mock value
-        return 2  # Mock: 2 large swings
+        try:
+            klines = await tech.fetch_klines(symbol, interval="1d", limit=max(days + 5, 30))
+            if not klines:
+                return 0
+            recent = klines[-days:]
+            swings = 0
+            for k in recent:
+                o = float(k[1])
+                h = float(k[2])
+                l = float(k[3])
+                if o <= 0:
+                    continue
+                pct = ((h - l) / o) * 100.0
+                if pct >= threshold:
+                    swings += 1
+            return swings
+        except Exception as e:
+            logger.error(f"Swing-count failed for {symbol}: {e}")
+            return 0
     
     async def _calculate_range_tightness(self, symbol: str, days: int) -> float:
         """Calculate how tight the price range is (percentage)."""
-        # Placeholder - would calculate (high - low) / low * 100
-        # For now, return a mock value
-        return 8.5  # Mock: 8.5% range
+        try:
+            klines = await tech.fetch_klines(symbol, interval="1d", limit=max(days + 5, 30))
+            if not klines:
+                return 0.0
+            recent = klines[-days:]
+            highs = [float(k[2]) for k in recent]
+            lows = [float(k[3]) for k in recent]
+            if not highs or not lows:
+                return 0.0
+            hi = max(highs)
+            lo = min(lows)
+            if lo <= 0:
+                return 0.0
+            return ((hi - lo) / lo) * 100.0
+        except Exception as e:
+            logger.error(f"Range-tightness calc failed for {symbol}: {e}")
+            return 0.0
 
 # Global orchestrator instance
 orchestrator = MarketOrchestrator()

@@ -1,5 +1,34 @@
 # Integration Notes
 
+## [2026-03-07] System Stability & Network Resilience Fixes
+- **DNS and SSL Stability**: 
+    - Resolved `Cannot connect to host api.binance.com:443 ssl:default [Could not contact DNS servers]` errors on Windows.
+    - Implemented `system_safe_fetch` using `urllib.request` and `asyncio.to_thread` to bypass `aiohttp` DNS resolution issues.
+    - Added standard SSL context enforcement for more reliable API connections.
+- **V2 Infrastructure Hardening**:
+    - Integrated `TimescaleDB` (via Postgres), `Redis`, and `Kafka` initialization into `post_init`.
+    - Added graceful fallback: if V2 infrastructure is unavailable, bot continues with V1 (SQLite) features.
+    - Real-time market data streaming with `WebSocket` support for select symbols (BTC, ETH, SOL).
+- **Agent Orchestration**:
+    - Intelligence Orchestrator now powers up silently on boot.
+    - Scheduled daily Strategy Research and daily/weekly Market Analysis.
+- **Unified Command Menu**: Added 100+ commands to the Telegram menu for effortless navigation through advanced features.
+
+## [2026-03-06] System Hardening & Critical Bug Fixes
+- **Unified Intelligence Integration**: 
+    - Fixed circular imports by renaming `intelligence_hub.py` to `hub.py`.
+    - Wired `MarketOrchestrator` to the `MessageHandler` via the `route_message` method.
+- **Stability and Startup**:
+    - Fixed `RuntimeError: event loop is closed` by moving database initialization to `post_init`.
+    - Removed duplicate `CognitiveLoop`, `SkillSystem`, and `EvolutionEngine` initializations.
+    - Captured subprocess errors by redirecting `stdout`/`stderr` to `dashboard.log` and `discord_bot.log`.
+    - Removed obsolete Flask server and replaced it with a `/health` endpoint in the Dashboard (FastAPI).
+- **Core Engine Fixes**:
+    - Fixed `ImportError` in `voice_handlers.py` due to missing `BASE_SYSTEM_PROMPT`.
+    - Fixed `SyntaxError` (unterminated triple-quoted string) in `airdrop/tracker.py`.
+    - Clarified Pydantic models in `dashboard/app.py` by using `Optional` types for nullable fields.
+    - Improved linter compatibility in `app.py` by using explicit `ndigits=2` in `round()` calls.
+
 ## [2026-02-23] Project Structure Setup
 - Created `requirements.txt` with base libraries (python-telegram-bot, python-dotenv, aiohttp, apscheduler, requests, openrouter).
 - Created `.env` for secure credential storage.
@@ -665,7 +694,20 @@ Provides mathematical models to evaluate expected value, momentum continuation p
 **Features added:**
 1. **Mean Reversion Calculator**: Uses Z-scores to calculate expected value on extreme standard deviations.
 2. **Momentum Persistence**: Calculates probability of trend continuation based on historical jump percentages.
-3. **Correlation Arbitrage**: Identifies when common correlations (e.g., BTC/ETH) break down to warn of market shifts. 
+3. **Correlation Arbitrage**: Identifies when common correlations (e.g., BTC/ETH) break down to warn of market shifts.
+- Built `StrategyResearchAgent`: Daily at 2AM UTC, it calls the VectorBT Discovery Engine to sweep for thousands of parameters. If it survives Walk-Forward testing, it promotes a new `CANDIDATE` Strategy to the database.
+- **Orchestrator Layer**: Built `crypto_agent/intelligence/orchestrator.py`. Bound the classes to cron jobs and hooked it into `main.py`'s `post_init()` so the AI task force awakens silently on boot.
+
+## [2026-03-07] V2 Phase 7: Monitoring & Dashboard UI
+- **Objective**: Provide a professional, real-time X-Ray glassmorphism view of the entire system's quantitative parameters and runtime latency.
+- **Telemetry Backend Engine**: Built `crypto_agent/trading/monitoring.py`.
+  - Hooks directly into the WebSocket market streamer to calculate `ingestion_lag_ms`.
+  - Hooks directly into the Execution Engine to measure exact simulated CCXT latency round-trips.
+  - Exposes REST API endpoint `GET /api/monitoring/summary` via the FastAPI router in `app.py`.
+- **Institutional V2 Frontend**: Initialized a new Vite React-TS Application (`v2_frontend/`).
+  - Outfitted with TailwindCSS and a rigid hedge-fund dark mode aesthetic (`#0B0E14` backgrounds with Neon Blue/Purple highlights).
+  - Integrated `recharts` for Delta-neutral portfolio visual tracking and `lucide-react` for a premium sidebar layout.
+  - The dashboard automatically fetches metrics every 2 seconds from the V2 API, rendering beautiful `MetricCard`s that auto-color code based on latency health thresholds.
 4. **Volatility Regime Classifier**: Classifies market into low/normal/high/extreme using ATR and Bollinger Band width.
 
 **Files Created:**
@@ -3553,3 +3595,113 @@ The ShufaClaw crypto agent system is now feature-complete across all master prom
 - **Directory Purge**: Created `/archives` and `/docs` directories to house over 30+ temporary scripts, logs, and reference markdown files that were cluttering the root.
 - **Project Hygiene**: Moved old database fragments (`test_memory.db`) and setup logs to ensure only essential entry points (`main.py`) and documentation are visible.
 - **Rule Adherence**: Aligned project structure with the "clean and organize" ground rule.
+
+
+---
+
+## Binance Skills Hub Installation (March 6, 2026)
+
+**What it does:** Gives the bot access to Binance market data and Web3 analysis tools
+
+**Location:** `.agents/binance/`
+
+**Available Skills:**
+
+1. **Binance Spot Trading** (`.agents/binance/skills/binance/spot/`)
+   - Get real-time crypto prices
+   - Check order books and trading volumes
+   - View candlestick/kline data
+   - Get 24-hour price statistics
+   - Query account balances (requires API key)
+   - Place/cancel orders (requires API key)
+
+2. **Binance Web3 Tools** (`.agents/binance/skills/binance-web3/`)
+   - `crypto-market-rank/` - Get top crypto rankings
+   - `meme-rush/` - Track trending meme coins
+   - `query-address-info/` - Look up wallet addresses
+   - `query-token-audit/` - Security audit for tokens
+   - `query-token-info/` - Detailed token information
+   - `trading-signal/` - Get trading signals
+
+**Setup Required:**
+- Most features work without API keys (public data)
+- Trading features need Binance API key + secret (get from binance.com)
+- Supports both Mainnet (real trading) and Testnet (practice)
+
+**Next Steps:**
+- Can integrate these skills into bot commands
+- Example: `/price BTC` could use Binance API to get Bitcoin price
+- Example: `/audit <token>` could check if a token is safe
+
+
+## [2026-03-06] V2 Phase 0: Foundational Infrastructure
+- **Objective**: Transition ShufaClaw to an industrial-grade, scaleable quant platform.
+- **Containerization**: Added `docker-compose.yml` defining `timescaledb` (PostgreSQL specifically tuned for time-series data), `redis` (session caching and state), `kafka` (event-driven messaging backbone), and `zookeeper`/`kafka-ui` for queue management.
+- **Data Schemas**: Implemented comprehensive Pydantic object models in `crypto_agent/schemas/` covering `market`, `onchain`, `intelligence`, `strategy`, `trading`, and `agents`. Replaces ad-hoc dictionaries with validated, strict data structures.
+- **Connection Layer**: Added robust async connection wrappers in `crypto_agent/infrastructure/`:
+  - `database.py`: Utilizes `asyncpg` with a connection pool. Auto-generates full V2 hypertable schemas.
+  - `cache.py`: Replaces the previous `dict` wrapper with `aioredis` for persistence and TTL.
+  - `event_bus.py`: Prepares event-driven pub/sub architecture using `aiokafka`, separating modules entirely.
+- **Graceful Degradation**: Modified `main.py`'s startup sequence. The bot now attempts to connect to V2 infrastructure (`TimescaleDB`, `Redis`, `Kafka`) and gracefully continues with its V1 architecture (`SQLite` memory) if Docker services are not yet available. Provides seamless transition tracking.
+- **Test Script**: Added `test_v2_infra.py` for manual verification of connected backend services.
+
+## [2026-03-07] V2 Phase 1: Market Data Ingestion
+- **Objective**: Upgrade from slow REST APIs to high-speed real-time WebSocket streams for market data.
+- **CCXT Integration**: Replaced raw `aiohttp` calls in the core ingestion layer with `ccxt` and its robust `ccxt.pro` async websockets, ensuring multi-exchange readiness.
+- **Market Streamer**: Created `crypto_agent/data/market_streamer.py`, effectively launching:
+  - `watch_ohlcv_for_symbols`: Streams live 1m candles.
+  - `watch_trades_for_symbols`: Streams pure tick data mapped to buyer/maker structures.
+  - `watch_order_book_for_symbols`: Streams raw L2 order book states for market depth monitoring.
+- **Dual-Write Pipeline**: 
+  - Persisted live data is formatted into strict Pydantic `Candle` schemas and inserted robustly into `TimescaleDB` (`ON CONFLICT DO UPDATE`).
+  - In parallel, extremely fast updates (Trades, Orderbook Changes) and Candles are broadcasted instantly to the `Kafka` Event Bus, allowing entirely decoupled microservices to react in ms.
+- **Bot Initialization Upgrade**: Updated `main.py`'s `post_init()` lifecycle to initialize the `MarketStreamer` implicitly after V2 Infrastructure verifies connectivity.
+- **Backfill CLI**: Built a standalone script `crypto_agent/data/backfill_cli.py` to allow manual deep-history downloads of OHLCV data directly into TimescaleDB, fully preparing the bot for Phase 3's high-grade walk-forward backtesting models.
+
+## [2026-03-07] V2 Phase 2: Intelligence Upgrade (Features & Regimes)
+- **Objective**: Elevate raw price/market data into structured Machine Learning ready Feature Vectors and discrete Market Regimes.
+- **Quantitative Functions**: Updated `crypto_agent/data/technical.py` with missing V2 mathematical models including:
+  - Realized Volatility
+  - Volume Delta (buyer vs seller pressure)
+  - Order Book Imbalance (bid vs ask depth)
+  - Statistical Z-Scoring (for Funding Rates/Metrics)
+- **Feature Engineering Service**: Built `crypto_agent/intelligence/feature_engine.py`. This engine takes raw arrays of data and compiles a strict, schema-validated, and versioned `FeatureVector` ready for consumption by AI and Backtesting models.
+- **Market Regime Detection**: Created `crypto_agent/intelligence/regime_detector.py`. Built a rule-based classifier that interprets the `FeatureVector` to definitively classify the market state (e.g., `BULL_TREND`, `CHOP_ACCUMULATION`, `HIGH_VOLATILITY_EXPANSION`).
+- **Feature API Endpoint**: Implemented `crypto_agent/api/features.py` exposing a REST endpoint (`/api/features/current/{symbol}`) to compute and serve the latest snapshots of vectors and regimes dynamically. Mounted this router natively into the FastAPI dashboard application (`app.py`).
+
+## [2026-03-07] V2 Phase 3: Strategy Research
+- **Objective**: Enhance the quantitative rigor of the platform by introducing vectorized backtesting, proper risk metrics, and automated strategy discovery.
+- **Vectorized Optimization engine**: Installed `vectorbt` and built `crypto_agent/intelligence/optimizer.py`. This leverages NumPy and Pandas to simulate thousands of parameter combinations instantaneously (e.g. testing every possible SMA cross in milliseconds).
+- **Strategy Discovery**: Implemented `crypto_agent/intelligence/strategy_discovery.py`. This engine performs fully automated Walk-Forward analysis (In-Sample Training, Out-Of-Sample Testing) securely preventing curve-fitting, and pushes surviving parameter sets natively to the `Strategy` Pydantic models.
+- **Backtester Metrics Upgrade**: Upgraded `crypto_agent/intelligence/backtester.py`.
+  - Integrated rigorous Sharpe and Sortino ratio calculations into `_calculate_metrics`.
+  - Added statistical noise warnings inside `format_backtest_report` for strategies yielding under 30 trades (enforcing statistical significance).
+
+## [2026-03-07] V2 Phase 4 & 5: Risk Gatekeeper & Order Execution
+- **Objective**: Ensure the platform strictly adheres to institutional risk constraints and can reliably translate signals into physical/simulated trades.
+- **Data Validations**: Relying heavily on the `TargetPortfolio`, `Position`, and `Order` Pydantic models in `crypto_agent/schemas/trading.py`.
+- **Risk Management Gatekeeper**: Built `crypto_agent/trading/risk_manager.py`.
+  - Configured with hard geometric constraints (Max Drawdown: 15%, Max Single Asset Exposure: 25%, Max Leverage: 3x).
+  - Exposes `vet_target_portfolio`, an interception layer that slashes proposed sizes by 50% (Yellow Alert), halts new trades entirely (Red Alert), or liquidates (Emergency).
+- **Execution Engine**: Built `crypto_agent/trading/execution.py`.
+  - Extracts the mathematical Delta between current portfolio holdings and the algorithm's target positions.
+  - Dispatches strict Pydantic `Order` models.
+  - Built-in Paper mode that realistically simulates CCXT latency execution while precisely measuring slippage in Basis Points (bps) against the `arrival_price`.
+
+## [2026-03-07] System Health & Frontend Stability Fix
+- **Lint & Syntax Repair**: Fixed unused variable error in 2_frontend/src/App.tsx catch block to allow clean CI/CD and linting passes.
+- **Verify Integrity**: Verified TypeScript (	sc) and Python (compileall) consistency across the V2 codebase. All core components pass validation.
+
+- **Dashboard Port Alignment**: Synchronized Backend (5000 -> 8000) and Frontend (8000) communication ports to resolve winerror 10048 and allow the dashboard telemetry to flow correctly.
+- **System Verification**: Confirmed all core V2 dependencies (FastAPI, Redis, APScheduler, Pydantic) are correctly installed and reachable.
+
+## [2026-03-07] Windows DNS Stability Update (Binance)
+- **Problem**: The bot was experiencing DNS resolution failures (`[Could not contact DNS servers]`) when connecting to Binance APIs using `aiohttp` on Windows.
+- **Solution**: 
+    - Created a new `system_safe_fetch` utility in `crypto_agent/core/network.py` that uses the Python `urllib` library (which utilizes the Windows system DNS more reliably than `aiohttp`'s default resolver).
+    - Centralized all Binance API calls to use `network.robust_fetch` combined with `system_safe_fetch`.
+- **Refactoring**: 
+    - Updated `prices.py`, `technical.py`, `backtester.py`, `arbitrage_scanner.py`, and `tracker.py` to use the new centralized fetching logic.
+    - Removed redundant fetch implementations from individual modules.
+- **Outcome**: Improved connection stability on Windows and unified error handling across all market data fetching modules.
+

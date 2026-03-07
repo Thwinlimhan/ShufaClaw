@@ -1,9 +1,5 @@
 import logging
 import asyncio
-import json
-import urllib.request
-import urllib.error
-import ssl
 from crypto_agent.data.cache import price_cache
 from crypto_agent.storage import database
 from crypto_agent.core import network
@@ -26,34 +22,6 @@ SYMBOL_MAP = {
 
 TIMEOUT = 10
 
-def _fetch_url_sync(url):
-    """Fetches JSON from a URL using urllib (works with system DNS on Windows)."""
-    try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'ShufaClaw/1.0'})
-        ctx = ssl.create_default_context()
-        with urllib.request.urlopen(req, timeout=TIMEOUT, context=ctx) as response:
-            if response.status == 200:
-                return json.loads(response.read().decode())
-            elif response.status == 429:
-                logger.warning(f"Rate limited (429): {url}")
-                return None
-            else:
-                logger.warning(f"API returned status {response.status} for {url}")
-                return None
-    except urllib.error.HTTPError as e:
-        if e.code == 429:
-            logger.warning(f"Rate limited (HTTPError 429): {url}")
-        else:
-            logger.warning(f"HTTP error {e.code} for {url}")
-        return None
-    except Exception as e:
-        logger.warning(f"Fetch failed for {url}: {e}")
-        return None
-
-async def _fetch_url_async(url):
-    """Wraps synchronous urllib fetch in asyncio.to_thread."""
-    return await asyncio.to_thread(_fetch_url_sync, url)
-
 async def get_price(symbol):
     """Fetches price with caching and circuit breakers. Falls back to DB cache on failure."""
     symbol = symbol.upper()
@@ -66,7 +34,7 @@ async def get_price(symbol):
     
     # 2. Try Fetching from Binance (using Circuit Breaker & Rate Limiter)
     binance_url = f"https://api.binance.com/api/v3/ticker/24hr?symbol={symbol}USDT"
-    data = await network.robust_fetch('binance', _fetch_url_async, binance_url)
+    data = await network.robust_fetch('binance', network.system_safe_fetch, binance_url)
     
     if data and 'lastPrice' in data:
         price = float(data['lastPrice'])
@@ -79,7 +47,7 @@ async def get_price(symbol):
     # 3. Try CoinGecko Backup (using Circuit Breaker & Rate Limiter)
     cg_id = SYMBOL_MAP.get(symbol, symbol.lower())
     cg_url = f"https://api.coingecko.com/api/v3/simple/price?ids={cg_id}&vs_currencies=usd&include_24hr_change=true"
-    data = await network.robust_fetch('coingecko', _fetch_url_async, cg_url)
+    data = await network.robust_fetch('coingecko', network.system_safe_fetch, cg_url)
     
     if data and cg_id in data:
         price = float(data[cg_id]['usd'])
@@ -117,7 +85,7 @@ async def get_market_overview():
         return cached
     
     url = "https://api.coingecko.com/api/v3/global"
-    data = await network.robust_fetch('coingecko', _fetch_url_async, url)
+    data = await network.robust_fetch('coingecko', network.system_safe_fetch, url)
     if data and 'data' in data:
         d = data['data']
         result = {
@@ -138,7 +106,7 @@ async def get_fear_greed_index():
         return cached
     
     url = "https://api.alternative.me/fng/"
-    data = await _fetch_url_async(url) # Generic fetch, no limiter needed for this one-off
+    data = await network.system_safe_fetch(url) # Using safe fetch
     if data and 'data' in data:
         d = data['data'][0]
         result = {
@@ -155,7 +123,7 @@ async def get_funding_rate(symbol):
     if not symbol.endswith('USDT'):
         symbol += 'USDT'
     url = f"https://fapi.binance.com/fapi/v1/fundingRate?symbol={symbol}&limit=1"
-    data = await network.robust_fetch('binance', _fetch_url_async, url)
+    data = await network.robust_fetch('binance', network.system_safe_fetch, url)
     if data and isinstance(data, list) and len(data) > 0:
         return float(data[0]['fundingRate'])
     return None
